@@ -250,9 +250,11 @@ function spotlight() {
     <p class="meta"><span>${esc(personLabel(hero.assigneeId))}${repeat ? ` · ${esc(repeat)}` : ""}</span></p>
     <button class="complete" data-complete="${esc(hero.id)}">${icon("complete")} Complete</button>
     <div class="move-row">
-      <span class="quiet">Move</span>
-      <button data-move="tomorrow">Tomorrow</button>
-      <button data-move="later">Later</button>
+      <p class="quiet">Move</p>
+      <div class="move-actions">
+        <button data-move="tomorrow">Tomorrow</button>
+        <button data-move="later">Later</button>
+      </div>
     </div>
   </section>`;
 }

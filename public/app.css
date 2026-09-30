@@ -164,15 +164,27 @@ h2 {
   line-height: 1.05;
 }
 
-.spotlight-top, .move-row {
+.spotlight-top {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.spotlight-top { justify-content: space-between; }
 .spotlight-top > div { display: grid; gap: 8px; justify-items: start; }
-.move-row button { flex: 1; }
+
+.move-row {
+  display: grid;
+  gap: 8px;
+}
+
+.move-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.move-actions button { width: 100%; }
 
 .empty-mark, .empty-mark svg {
   width: 64px;
@@ -182,13 +194,9 @@ h2 {
 
 .lanes {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   margin-top: 22px;
-}
-
-@media (min-width: 840px) {
-  .lanes { grid-template-columns: 1fr 1fr; align-items: start; }
-  .later { grid-column: 1 / -1; }
 }
 
 .lane { min-width: 0; }
@@ -197,6 +205,9 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 12px;
+  min-height: 32px;
   margin-bottom: 8px;
 }
 
@@ -224,6 +235,7 @@ h2 {
   padding: 0 8px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 999px;
   background: var(--sky);
   color: var(--teal);

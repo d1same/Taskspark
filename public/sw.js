@@ -1,4 +1,4 @@
-const CACHE = "taskspark-shell-5";
+const CACHE = "taskspark-shell-6";
 const SHELL = ["./", "index.html", "app.css", "app.js", "icons.js", "theme.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (event) => {
