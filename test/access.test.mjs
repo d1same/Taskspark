@@ -412,6 +412,12 @@ test("a reward spends the points that person has earned", async () => {
       body: { title: "Dishes", points: 20, assigneeId: null, bucket: "today", repeat: "none" },
     });
     const id = task.json.tasks.find((row) => row.title === "Dishes").id;
+    const grabbed = await api(url, `/api/tasks/${id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: person.id },
+    });
+    assert.equal(grabbed.res.status, 200);
     await api(url, `/api/tasks/${id}/complete`, {
       method: "POST",
       token: owner,
@@ -448,6 +454,86 @@ test("a reward spends the points that person has earned", async () => {
     assert.equal(text.includes("harbor-light"), false);
     assert.equal(text.includes("Movie pick"), false);
     assert.match(text, /info reward claim/);
+  } finally {
+    process.stdout.write = write;
+    app.close();
+  }
+});
+
+test("an unowned chore cannot be closed until a real person claims it", async () => {
+  const lines = [];
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (chunk, encoding, callback) => {
+    lines.push(String(chunk));
+    return write(chunk, encoding, callback);
+  };
+  const dir = mkdtempSync(join(tmpdir(), "taskspark-"));
+  const app = createApp({ dataFile: join(dir, "board.sqlite") });
+  const { url } = await app.listen();
+  try {
+    const setup = await api(url, "/api/setup", {
+      method: "POST",
+      body: { code: "quiet-lane", confirm: "quiet-lane" },
+    });
+    const owner = tokenFrom(setup.res);
+    const ada = await api(url, "/api/members", {
+      method: "POST",
+      token: owner,
+      body: { name: "Ada", color: "#c56a4a" },
+    });
+    const bo = await api(url, "/api/members", {
+      method: "POST",
+      token: owner,
+      body: { name: "Bo", color: "#6f8f78" },
+    });
+    const adaId = ada.json.members.find((member) => member.name === "Ada").id;
+    const boId = bo.json.members.find((member) => member.name === "Bo").id;
+    const task = await api(url, "/api/tasks", {
+      method: "POST",
+      token: owner,
+      body: { title: "Feed the cat", points: 20, assigneeId: null, bucket: "today", repeat: "none" },
+    });
+    const id = task.json.tasks.find((row) => row.title === "Feed the cat").id;
+    const closed = await api(url, `/api/tasks/${id}/complete`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: adaId },
+    });
+    assert.equal(closed.res.status, 400);
+    const extra = await api(url, `/api/tasks/${id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: adaId, device: "phone" },
+    });
+    assert.equal(extra.res.status, 400);
+    const claimed = await api(url, `/api/tasks/${id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: adaId },
+    });
+    assert.equal(claimed.res.status, 200);
+    const row = claimed.json.tasks.find((item) => item.id === id);
+    assert.equal(row.assigneeId, adaId);
+    assert.equal(row.points, 20);
+    const again = await api(url, `/api/tasks/${id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: boId },
+    });
+    assert.equal(again.res.status, 400);
+    const done = await api(url, `/api/tasks/${id}/complete`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: boId },
+    });
+    assert.equal(done.res.status, 200);
+    assert.equal(done.json.completed[0].memberName, "Bo");
+    assert.equal(done.json.completed[0].points, 20);
+    const text = lines.join("");
+    assert.equal(text.includes("quiet-lane"), false);
+    assert.equal(text.includes("Ada"), false);
+    assert.equal(text.includes("Feed the cat"), false);
+    assert.match(text, /info task claim/);
   } finally {
     process.stdout.write = write;
     app.close();

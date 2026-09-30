@@ -430,9 +430,20 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       return;
     }
 
-    const taskRoute = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(complete))?$/);
+    const taskRoute = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(complete|claim))?$/);
     if (taskRoute && req.method === "POST") {
       requireBoard(req);
+      if (taskRoute[2] === "claim") {
+        const body = await readJson(req, ["memberId"]);
+        const memberId = optionalId(body.memberId);
+        if (!memberId || !db.claim(taskRoute[1], memberId)) {
+          log("error", "task claim failed");
+          throw bad();
+        }
+        log("info", "task claim");
+        send(res, 200, db.readState(clock));
+        return;
+      }
       if (taskRoute[2] === "complete") {
         const body = await readJson(req, ["memberId"]);
         const memberId = optionalId(body.memberId);

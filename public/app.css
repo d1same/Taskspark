@@ -109,6 +109,11 @@ body {
 button, input { font: inherit; color: inherit; }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: auto;
   min-height: 56px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -116,6 +121,7 @@ button {
   border-radius: 16px;
   padding: 12px 16px;
   font-weight: 700;
+  text-align: left;
   box-shadow: var(--shadow);
   touch-action: manipulation;
   cursor: pointer;
@@ -424,13 +430,14 @@ html[data-theme="dark"] .track { background: #3a332c; }
 
 .laneswitch button, .segment button {
   flex: 1;
+  justify-content: center;
   min-height: 56px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
   font-weight: 800;
-  padding: 8px 6px;
+  padding: 8px 12px;
   white-space: nowrap;
 }
 
@@ -481,6 +488,7 @@ html[data-theme="dark"] .track { background: #3a332c; }
 .grip { border: 0; background: transparent; color: var(--muted); }
 .check { border: 2px solid var(--line-strong); background: var(--sunken); }
 .check.is-done { background: var(--green); color: #fff; border-color: var(--green); }
+.check.is-open { border-style: dashed; background: transparent; }
 
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; font-weight: 700; }
 
@@ -519,7 +527,7 @@ html[data-theme="dark"] .badge.lg { color: #2a1608; }
 .note {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
+  align-items: center;
   padding: 12px 14px;
   border-radius: 16px;
   background: var(--amber-soft);
@@ -733,6 +741,11 @@ body:has(dialog[open]) .fab { visibility: hidden; }
   border-radius: 12px;
   box-shadow: none;
   font-weight: 800;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
 }
 .month button.is-today, .day-row.is-today { background: var(--coral); color: #fff; border-color: var(--coral); }
 .switcher { display: flex; gap: 8px; }
@@ -770,7 +783,12 @@ dialog.sheet::backdrop {
   overflow: auto;
   max-height: min(88dvh, 100%);
 }
-.sheet-body > .icon-btn { justify-self: end; background: var(--chip); }
+.sheet-body > .icon-btn { justify-self: end; width: 48px; background: var(--chip); }
+.sheet-body > button:not(.icon-btn),
+.fields > button:not(.color),
+.stack > button:not(.icon-btn) {
+  width: 100%;
+}
 .award { width: 100%; white-space: normal; }
 
 .empty { padding: 8px 2px; }

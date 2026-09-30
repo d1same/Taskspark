@@ -238,15 +238,10 @@ function waitScreen() {
 }
 
 function header() {
-  const dotMark = ui.pending ? `<span class="bell-dot"></span>` : "";
   return `<header class="topbar">
     <div class="brand">
       <button class="icon-btn" data-open="menu" aria-label="Menu">${icon("burger")}</button>
       <h1>Taskspark ${icon("bolt")}</h1>
-    </div>
-    <div class="top-tools">
-      <span class="lan-pill"><span class="lan-dot"></span>Local</span>
-      <button class="icon-btn" data-bell="1" aria-label="Devices">${icon("bell")}${dotMark}</button>
     </div>
   </header>`;
 }
@@ -303,9 +298,17 @@ function taskCard(task, allowDrag) {
   const whoPill = who
     ? `<span class="pill ${tone(who.color)}">${dot(who.color)}${esc(who.name)}</span>`
     : `<span class="pill tone-any">${icon("home")} Open to anyone</span>`;
+  const owned = Boolean(task.assigneeId);
   const check = task.resting
     ? `<span class="check is-done" aria-hidden="true">${icon("complete")}</span>`
-    : `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"></button>`;
+    : owned
+      ? `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"></button>`
+      : `<span class="check is-open" aria-hidden="true"></span>`;
+  const claim = !owned && !task.resting
+    ? `<button class="primary" data-claim-chore="${esc(task.id)}">Claim</button>`
+    : "";
+  const edit = allowDrag ? `<button data-edit="${esc(task.id)}">Edit</button>` : "";
+  const actions = claim || edit ? `<div class="row-actions">${claim}${edit}</div>` : "";
   return `<article class="task ${stripe}${task.resting ? " is-done" : ""}" data-id="${esc(task.id)}">
     <div class="task-row">
       ${allowDrag ? `<button class="grip" data-grip aria-label="Reorder">${icon("grip")}</button>` : ""}
@@ -316,12 +319,7 @@ function taskCard(task, allowDrag) {
       </div>
       ${badge(task.score)}
     </div>
-    ${allowDrag ? `<div class="segment" aria-label="When">
-      <button data-move="today" aria-pressed="${task.bucket === "today"}">Today</button>
-      <button data-move="tomorrow" aria-pressed="${task.bucket === "tomorrow"}">Tomorrow</button>
-      <button data-move="later" aria-pressed="${task.bucket === "later"}">Later</button>
-    </div>
-    <button data-edit="${esc(task.id)}">Edit</button>` : ""}
+    ${actions}
     ${ui.editing === task.id ? editForm(task) : ""}
   </article>`;
 }
@@ -331,10 +329,17 @@ function editForm(task) {
   const legacy = stored !== 5 && stored !== 10 && stored !== 20
     ? `<p class="quiet">This task is worth ${stored}. Pick 5, 10, or 20.</p>`
     : "";
+  const bucket = ui.fields.bucket || task.bucket || "today";
   return `<div class="fields">
     <label>Title<input data-field="title" value="${esc(ui.fields.title || task.title)}"></label>
     ${pointsPick(ui.fields.points)}
     ${legacy}
+    <p class="kicker">When</p>
+    <div class="segment" aria-label="When">
+      <button data-set="bucket" data-value="today" aria-pressed="${bucket === "today"}">Today</button>
+      <button data-set="bucket" data-value="tomorrow" aria-pressed="${bucket === "tomorrow"}">Tomorrow</button>
+      <button data-set="bucket" data-value="later" aria-pressed="${bucket === "later"}">Later</button>
+    </div>
     <label>Date<input data-field="due" type="date" value="${esc(ui.fields.due || task.due || "")}"></label>
     <div class="segment">
       <button data-set="repeat" data-value="none" aria-pressed="${(ui.fields.repeat || task.repeat) === "none"}">Once</button>
@@ -447,7 +452,6 @@ function board() {
     return `<button data-lane="${key}" aria-pressed="${name === key}">${label} (${counts[key]})</button>`;
   }).join("");
   return `<div class="page">
-    <div class="hub"><span>${icon("home")} Local hub: <b>On this server</b></span></div>
     ${memberChips()}
     ${dailyGoal()}
     <div class="laneswitch" role="group" aria-label="When">${switcher}</div>
@@ -885,14 +889,14 @@ function admin() {
   </section>`;
 }
 
-function peopleGrid(points) {
+function peopleGrid(selectedLabel) {
   const people = state.members || [];
   if (!people.length) return `<p class="quiet">Add a person in Admin.</p>`;
   return `<div class="people-grid">${people.map((member) => {
     const on = ui.pickId === member.id;
     return `<button class="person-card${on ? " is-on" : ""}" data-choose="${esc(member.id)}" aria-pressed="${on}">
       ${letter(member.name, member.color)}
-      <span><strong>${esc(member.name)}</strong><em>${pointsFor(member.id, "week")} pts</em><b class="gets">${on ? `Receives +${points}` : "Select"}</b></span>
+      <span><strong>${esc(member.name)}</strong><em>${pointsFor(member.id, "week")} pts</em><b class="gets">${on ? selectedLabel : "Select"}</b></span>
     </button>`;
   }).join("")}</div>`;
 }
@@ -930,10 +934,22 @@ function sheet() {
         ${badge(points, true)}
       </div>
       <div class="spread"><p><strong>Who earned the points?</strong></p><span class="quiet">${picked ? "1 person selected" : "None selected"}</span></div>
-      ${peopleGrid(points)}
+      ${peopleGrid(`Receives +${points}`)}
       <p class="quiet">Points are saved on this household server. The chore's points stay ${points}.</p>
       <button class="primary award" data-award="1" ${picked ? "" : "disabled"}>${icon("complete")} ${action}</button>
       <button data-close="1">${ui.sheet === "complete" ? "Cancel / Keep in Today" : "Cancel"}</button>`;
+  } else if (ui.sheet === "claim") {
+    const task = taskById(ui.taskId);
+    const picked = memberById(ui.pickId);
+    const action = picked ? `Claim for ${esc(picked.name)}` : "Choose who is taking it";
+    body = `<div class="sheet-head">
+        <div class="device-main"><span class="device-mark">${icon("home")}</span><h2>Who is taking this?</h2></div>
+      </div>
+      <p><strong>${esc(task?.title || "This chore")}</strong></p>
+      <p class="quiet">Anyone is not a person. Pick who it belongs to. It can be finished after that.</p>
+      ${peopleGrid("Takes this chore")}
+      <button class="primary award" data-claim-for="1" ${picked ? "" : "disabled"}>${icon("complete")} ${action}</button>
+      <button data-close="1">Cancel</button>`;
   }
   return `<dialog class="sheet" id="sheet" closedby="any" aria-label="Taskspark"><div class="grab"></div><div class="sheet-body"><button class="icon-btn" data-close="1" aria-label="Close">${icon("close")}</button>${body}</div></dialog>`;
 }
@@ -984,12 +1000,6 @@ async function loadDevices() {
   const data = await res.json().catch(() => null);
   const host = document.getElementById("devices");
   if (!host || !data?.devices) return;
-  ui.pending = data.devices.filter((device) => device.status === "pending").length;
-  const bell = document.querySelector("[data-bell]");
-  if (bell) {
-    bell.querySelector(".bell-dot")?.remove();
-    if (ui.pending) bell.insertAdjacentHTML("beforeend", `<span class="bell-dot"></span>`);
-  }
   const waiting = data.devices.filter((device) => device.status === "pending");
   const rest = data.devices.filter((device) => device.status !== "pending");
   const pendingCards = waiting.map((device) => {
@@ -1056,14 +1066,6 @@ document.addEventListener("click", async (event) => {
   if (target.dataset.theme) {
     applyTheme(target.dataset.theme);
     render();
-    return;
-  }
-  if (target.hasAttribute("data-bell")) {
-    ui.view = "admin";
-    ui.sheet = null;
-    ui.pickId = null;
-    render();
-    document.getElementById("devices")?.scrollIntoView({ block: "start" });
     return;
   }
   if (target.dataset.open) {
@@ -1222,9 +1224,20 @@ document.addEventListener("click", async (event) => {
     render();
     return;
   }
-  if (target.dataset.move) {
-    const card = target.closest("[data-id]");
-    await send("api/tasks/reorder", "POST", { id: card.dataset.id, bucket: target.dataset.move, index: 500 });
+  if (target.dataset.claimChore) {
+    ui.sheet = "claim";
+    ui.taskId = target.dataset.claimChore;
+    ui.pickId = null;
+    render();
+    return;
+  }
+  if (target.dataset.claimFor) {
+    const memberId = ui.pickId;
+    const taskId = ui.taskId;
+    if (!memberId || !taskId) return;
+    ui.sheet = null;
+    ui.pickId = null;
+    await send(`api/tasks/${taskId}/claim`, "POST", { memberId });
     render();
     return;
   }
@@ -1235,6 +1248,7 @@ document.addEventListener("click", async (event) => {
     ui.fields.points = task?.points || 10;
     ui.fields.repeat = task?.repeat || "none";
     ui.fields.due = task?.due || "";
+    ui.fields.bucket = task?.bucket || "today";
     render();
     return;
   }
@@ -1246,12 +1260,19 @@ document.addEventListener("click", async (event) => {
       render();
       return;
     }
+    const bucket = ui.fields.bucket || task?.bucket || "today";
+    const typed = field("due") || "";
+    let due = null;
+    if (bucket === "today") due = state.today;
+    else if (bucket === "tomorrow") due = state.tomorrow;
+    else if (typed > (state.tomorrow || "")) due = typed;
     await send(`api/tasks/${target.dataset.saveTask}`, "POST", {
       title: field("title"),
       points,
       assigneeId: task?.assigneeId || null,
+      bucket,
       repeat: ui.fields.repeat,
-      due: field("due") || null,
+      due,
     });
     ui.editing = null;
     render();

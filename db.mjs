@@ -436,8 +436,7 @@ export function openDatabase(file) {
         if (input.bucket === "today") due = bounds.today;
         else if (input.bucket === "tomorrow") due = bounds.tomorrow;
         else if (input.bucket === "later") {
-          const isLater = !current.due || (current.due !== bounds.today && current.due !== bounds.tomorrow && current.due > bounds.today);
-          if (!isLater) due = null;
+          due = input.due && input.due > bounds.tomorrow ? input.due : null;
         }
         db.prepare(
           `UPDATE tasks SET title = ?, points = ?, weight = ?, assignee_id = ?, due = ?, repeat = ? WHERE id = ?`,
@@ -448,6 +447,15 @@ export function openDatabase(file) {
     deleteTask(id) {
       return tx(() => {
         db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+        return true;
+      });
+    },
+    claim(taskId, memberId) {
+      return tx(() => {
+        const task = db.prepare("SELECT id, assignee_id FROM tasks WHERE id = ?").get(taskId);
+        const member = db.prepare("SELECT id FROM members WHERE id = ?").get(memberId);
+        if (!task || !member || task.assignee_id) return false;
+        db.prepare("UPDATE tasks SET assignee_id = ? WHERE id = ? AND assignee_id IS NULL").run(memberId, taskId);
         return true;
       });
     },
@@ -465,7 +473,7 @@ export function openDatabase(file) {
       return tx(() => {
         const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
         const member = db.prepare("SELECT id, name FROM members WHERE id = ?").get(memberId);
-        if (!task || !member) return { ok: false };
+        if (!task || !member || !task.assignee_id) return { ok: false };
         const row = settings();
         const mapped = {
           id: task.id,
