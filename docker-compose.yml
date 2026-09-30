@@ -2,9 +2,9 @@ services:
   taskspark:
     image: ghcr.io/d1same/taskspark:latest
     ports:
-      - "8080:8080"
+      - "7370:7370"
     environment:
-      PORT: "8080"
+      PORT: "7370"
       DATA_DIR: /data
       TZ: America/New_York
     volumes:

@@ -498,7 +498,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const dataFile = join(process.env.DATA_DIR || "/data", "taskspark.sqlite");
-  const port = Number(process.env.PORT || 8080);
+  const port = Number(process.env.PORT || 7370);
   const app = createApp({ dataFile });
   app.listen(port, "0.0.0.0").then(() => {
     console.log(`Taskspark listening on ${port}`);

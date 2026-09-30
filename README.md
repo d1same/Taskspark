@@ -13,12 +13,12 @@ A push to `main` makes GitHub build `ghcr.io/d1same/taskspark` for `linux/amd64`
 You put the board on the kitchen computer. Chores stay in the data folder, so a reboot does not wipe the house.
 
 ```bash
-docker run -d --name taskspark --restart unless-stopped -p 8080:8080 -v taskspark:/data ghcr.io/d1same/taskspark:latest
+docker run -d --name taskspark --restart unless-stopped -p 7370:7370 -v taskspark:/data ghcr.io/d1same/taskspark:latest
 ```
 
 To keep the database in a folder on the computer instead of a named volume, use `-v /path/to/taskspark:/data` in that same command.
 
-Open `http://127.0.0.1:8080`.
+Open `http://127.0.0.1:7370`.
 
 The container runs as user id 1000. That user must be allowed to write the data folder.
 
@@ -38,7 +38,7 @@ Add a container in the Docker page.
 
 - Image: `ghcr.io/d1same/taskspark:latest`
 - Network: bridge
-- Port: host `8080` to container `8080`
+- Port: host `7370` to container `7370`
 - Path: `/mnt/user/appdata/taskspark` to `/data`
 - Variable: `TZ` = `America/New_York`
 - Privileged: off
@@ -57,7 +57,7 @@ This folder is a local add-on. `config.yaml` pulls `ghcr.io/d1same/taskspark:lat
 1. Copy this folder to `/addons/taskspark` on the Home Assistant host.
 2. Open Settings, Add-ons, Add-on store. Reload the store.
 3. Install Taskspark and start it.
-4. Open port 8080.
+4. Open port 7370.
 
 The add-on stores the database in its data folder, mounted at `/data`.
 

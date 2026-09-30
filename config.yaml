@@ -10,9 +10,9 @@ init: false
 startup: application
 boot: auto
 ports:
-  8080/tcp: 8080
+  7370/tcp: 7370
 ports_description:
-  8080/tcp: Taskspark
+  7370/tcp: Taskspark
 map:
   - data:rw
 options: {}
