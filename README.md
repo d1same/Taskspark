@@ -26,7 +26,7 @@ Logs are one line each, with a time and the word info or error. Read them with `
 
 ## Roll back
 
-`latest` is the newest image. This logs release is `0.1.0`. To go back, set the tag to an older version, for example `ghcr.io/d1same/taskspark:0.1.0`, instead of `latest`.
+`latest` is the newest image. `0.1.0` stays the rollback pin. To go back, set the tag to an older version, for example `ghcr.io/d1same/taskspark:0.1.0`, instead of `latest`.
 
 ```bash
 docker run -d --name taskspark --restart unless-stopped -p 7370:7370 -v taskspark:/data ghcr.io/d1same/taskspark:0.1.0

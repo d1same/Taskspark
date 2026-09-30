@@ -18,6 +18,7 @@ const ui = {
 
 let state = { phase: "setup" };
 let drag = null;
+let sheetEpoch = 0;
 
 function blankFields() {
   return {
@@ -227,7 +228,7 @@ function addForm() {
     .join("");
   return `<label>Title<input data-field="title" value="${esc(ui.fields.title)}"></label>
     <label>Points<input data-field="points" type="number" min="1" max="100" value="${esc(ui.fields.points)}"></label>
-    <div class="segment">${people}</div>
+    <div class="segment wrap">${people}</div>
     <div class="segment">
       <button data-set="bucket" data-value="today" aria-pressed="${ui.fields.bucket === "today"}">Today</button>
       <button data-set="bucket" data-value="tomorrow" aria-pressed="${ui.fields.bucket === "tomorrow"}">Tomorrow</button>
@@ -373,12 +374,37 @@ function leaderPane() {
   return `<section class="panel"><div class="segment">${buttons}</div><button class="primary" data-action="reset-now">Reset now</button>${archive}</section>`;
 }
 
-function scoreList(title, rows, mark) {
-  const lines = [...rows].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name)).map((row) => {
+function ranked(rows) {
+  return [...(rows || [])].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+}
+
+function scoreList(title, rows, mark, skip = 0) {
+  const lines = ranked(rows).slice(skip).map((row) => {
     const member = memberById(row.memberId);
     return `<p class="score-line"><span class="person">${member ? avatar(member.name, member.color) : ""} ${esc(row.name)}</span><span>${icon("points")} ${row.points}</span></p>`;
   }).join("");
+  if (skip && !lines) return "";
   return `<section class="score-block"><h2>${mark || ""} ${title}</h2>${lines || `<p class="quiet">No points yet.</p>`}</section>`;
+}
+
+function podium(rows) {
+  const top = ranked(rows).filter((row) => row.points > 0).slice(0, 3);
+  if (!top.length) return `<p class="quiet">No points yet.</p>`;
+  const slots = [
+    { row: top[1], place: 2 },
+    { row: top[0], place: 1 },
+    { row: top[2], place: 3 },
+  ];
+  return `<div class="podium">${slots.map((slot) => {
+    if (!slot.row) return `<div class="place place-${slot.place}"></div>`;
+    const member = memberById(slot.row.memberId);
+    return `<div class="place place-${slot.place}">
+      <div class="place-person">${slot.place === 1 ? icon("crown") : ""}${member ? avatar(member.name, member.color) : ""}</div>
+      <p class="place-name">${esc(slot.row.name)}</p>
+      <p class="place-points">${icon("points")} ${slot.row.points}</p>
+      <div class="place-block" aria-hidden="true">${slot.place}</div>
+    </div>`;
+  }).join("")}</div>`;
 }
 
 function winnerLine(title, winner, mark) {
@@ -390,14 +416,21 @@ function sheet() {
   if (!ui.sheet) return "";
   let body = "";
   if (ui.sheet === "menu") {
-    body = `<button data-view="calendar">${icon("calendar")} Calendar</button>
+    const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    body = `<div class="segment" role="group" aria-label="Appearance">
+        <button data-theme="light" aria-pressed="${theme === "light"}">${icon("sun")} Light</button>
+        <button data-theme="dark" aria-pressed="${theme === "dark"}">${icon("moon")} Dark</button>
+      </div>
+      <button data-view="calendar">${icon("calendar")} Calendar</button>
       <button data-view="completed">${icon("complete")} Completed</button>
-      <button data-view="admin">Admin</button>`;
+      <button data-view="admin">${icon("gear")} Admin</button>`;
   } else if (ui.sheet === "score") {
     const board = state.leaderboard || { allTime: [], week: [], month: [], year: [], period: [], lastWeek: null, lastMonth: null };
     body = `<h2>${icon("crown")} Scoreboard</h2>
+      <p class="kicker">This week</p>
+      ${podium(board.week)}
       ${state.cutoff ? scoreList("Period", board.period, "") : ""}
-      ${scoreList("This week", board.week, icon("crown"))}
+      ${scoreList("This week", board.week, icon("crown"), 3)}
       ${scoreList("This month", board.month, icon("month"))}
       ${scoreList("This year", board.year, icon("year"))}
       ${scoreList("All-time", board.allTime, icon("points"))}
@@ -410,7 +443,7 @@ function sheet() {
       : `<p>Add a person in Admin.</p>`;
     body = `<h2>${ui.sheet === "complete" ? "Who did this?" : "Who gets the points?"}</h2>${body}`;
   }
-  return `<dialog class="sheet" id="sheet"><div class="sheet-body"><button class="icon-btn" data-close aria-label="Close">${icon("close")}</button>${body}</div></dialog>`;
+  return `<dialog class="sheet" id="sheet" closedby="any" aria-label="Taskspark"><div class="sheet-body"><button class="icon-btn" data-close aria-label="Close">${icon("close")}</button>${body}</div></dialog>`;
 }
 
 function shell() {
@@ -419,13 +452,30 @@ function shell() {
 }
 
 function render() {
+  sheetEpoch += 1;
+  const epoch = sheetEpoch;
   const root = document.getElementById("app");
   if (!state || state.phase === "setup") root.innerHTML = setupScreen();
   else if (state.phase === "locked") root.innerHTML = lockScreen();
   else if (state.phase === "waiting") root.innerHTML = waitScreen();
   else root.innerHTML = shell();
   const dialog = document.getElementById("sheet");
-  if (dialog && !dialog.open) dialog.showModal();
+  if (dialog && !dialog.open) {
+    dialog.showModal();
+    dialog.addEventListener("close", () => {
+      if (epoch !== sheetEpoch || !ui.sheet) return;
+      ui.sheet = null;
+      render();
+    });
+    if (!("closedBy" in HTMLDialogElement.prototype)) {
+      dialog.addEventListener("click", (event) => {
+        if (event.target !== dialog) return;
+        const rect = dialog.getBoundingClientRect();
+        const inside = rect.top <= event.clientY && event.clientY <= rect.bottom && rect.left <= event.clientX && event.clientX <= rect.right;
+        if (!inside) dialog.close();
+      });
+    }
+  }
   if (ui.view === "admin" && ui.admin === "devices" && state.phase === "board") loadDevices();
 }
 
@@ -441,6 +491,21 @@ async function loadDevices() {
   }).join("") || `<p class="quiet">No devices.</p>`;
 }
 
+function applyTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = next;
+  document.documentElement.style.colorScheme = next;
+  const scheme = document.querySelector('meta[name="color-scheme"]');
+  if (scheme) scheme.content = next;
+  const color = document.querySelector('meta[name="theme-color"]');
+  if (color) color.content = next === "dark" ? "#1b1714" : "#f3eee6";
+  try {
+    localStorage.setItem("taskspark-theme", next);
+  } catch {
+    /* the board still switches for this visit */
+  }
+}
+
 function field(name) {
   const node = document.querySelector(`[data-field="${name}"]`);
   if (!node) return ui.fields[name];
@@ -450,6 +515,11 @@ function field(name) {
 document.addEventListener("click", async (event) => {
   const target = event.target.closest("button");
   if (!target) return;
+  if (target.dataset.theme) {
+    applyTheme(target.dataset.theme);
+    render();
+    return;
+  }
   if (target.dataset.open) {
     ui.sheet = target.dataset.open;
     render();

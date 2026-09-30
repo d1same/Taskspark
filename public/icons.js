@@ -20,6 +20,9 @@ const PATHS = {
   calendar: '<rect x="4" y="5" width="16" height="14.5" rx="2.5"/><path d="M4 9.5h16M8 3.2v3.2M16 3.2v3.2"/>',
   burger: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   close: '<path d="M7 7l10 10M17 7 7 17"/>',
+  sun: '<circle cx="12" cy="12" r="3.4"/><path d="M12 3.1v2.1M12 18.8v2.1M3.1 12h2.1M18.8 12h2.1M5.5 5.5l1.5 1.5M17 17l1.5 1.5M18.5 5.5 17 7M7 17l-1.5 1.5"/>',
+  moon: '<path d="M15.4 3.8A7.1 7.1 0 1 0 20.2 16 6.2 6.2 0 0 1 15.4 3.8Z"/>',
+  gear: '<path d="M14.7 6.4a3.1 3.1 0 0 0-4.2 4L5 16.1a1.5 1.5 0 0 0 2.1 2.1l5.7-5.6a3.1 3.1 0 0 0 4-4.2l-1.9 1.9-2.2-2.2Z"/>',
   grip: '<circle cx="9" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="17" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="1.15" fill="currentColor" stroke="none"/>',
 };
 

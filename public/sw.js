@@ -1,5 +1,5 @@
-const CACHE = "taskspark-shell-1";
-const SHELL = ["./", "index.html", "app.css", "app.js", "icons.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+const CACHE = "taskspark-shell-2";
+const SHELL = ["./", "index.html", "app.css", "app.js", "icons.js", "theme.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
