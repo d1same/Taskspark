@@ -1,5 +1,5 @@
-const CACHE = "taskspark-shell-6";
-const SHELL = ["./", "index.html", "app.css", "app.js", "icons.js", "theme.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+const CACHE = "taskspark-shell-7";
+const SHELL = ["./", "index.html", "app.css", "app.js", "icons.js", "theme.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "fonts/plus-jakarta-sans-500.woff2", "fonts/plus-jakarta-sans-600.woff2", "fonts/plus-jakarta-sans-700.woff2", "fonts/plus-jakarta-sans-800.woff2"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));

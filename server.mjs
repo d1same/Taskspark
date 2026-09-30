@@ -14,6 +14,10 @@ const FILES = new Map([
   ["/sw.js", ["sw.js", "text/javascript; charset=utf-8"]],
   ["/manifest.webmanifest", ["manifest.webmanifest", "application/manifest+json"]],
   ["/theme.js", ["theme.js", "text/javascript; charset=utf-8"]],
+  ["/fonts/plus-jakarta-sans-500.woff2", ["fonts/plus-jakarta-sans-500.woff2", "font/woff2"]],
+  ["/fonts/plus-jakarta-sans-600.woff2", ["fonts/plus-jakarta-sans-600.woff2", "font/woff2"]],
+  ["/fonts/plus-jakarta-sans-700.woff2", ["fonts/plus-jakarta-sans-700.woff2", "font/woff2"]],
+  ["/fonts/plus-jakarta-sans-800.woff2", ["fonts/plus-jakarta-sans-800.woff2", "font/woff2"]],
   ["/icon-192.png", ["icon-192.png", "image/png"]],
   ["/icon-512.png", ["icon-512.png", "image/png"]],
 ]);
@@ -348,6 +352,50 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
         if (!name || !PALETTE.includes(color)) throw bad();
         if (!db.updateMember(memberRoute[1], name, color)) throw bad();
       }
+      send(res, 200, db.readState(clock));
+      return;
+    }
+
+    if (req.method === "POST" && path === "/api/rewards") {
+      requireBoard(req);
+      const body = await readJson(req, ["title", "detail", "cost", "category"]);
+      const title = text(body.title, 60);
+      const detail = text(body.detail || "", 140) || "";
+      const cost = Number(body.cost);
+      const category = body.category;
+      if (!title || !Number.isInteger(cost) || cost < 1 || cost > 500) throw bad();
+      if (!["privilege", "outing", "badge"].includes(category)) throw bad();
+      db.addReward(title, detail, cost, category, clock);
+      log("info", "reward add");
+      send(res, 200, db.readState(clock));
+      return;
+    }
+
+    const rewardRoute = path.match(/^\/api\/rewards\/([0-9a-f-]{36})(\/claim)?$/);
+    if (rewardRoute && req.method === "POST") {
+      requireBoard(req);
+      if (rewardRoute[2] === "/claim") {
+        const body = await readJson(req, ["memberId"]);
+        const memberId = optionalId(body.memberId);
+        if (!memberId) throw bad();
+        const claimed = db.claimReward(rewardRoute[1], memberId, clock);
+        if (claimed !== true) {
+          log("error", "reward claim failed");
+          throw bad();
+        }
+        log("info", "reward claim");
+      } else {
+        throw bad();
+      }
+      send(res, 200, db.readState(clock));
+      return;
+    }
+
+    if (rewardRoute && req.method === "DELETE") {
+      requireBoard(req);
+      await readJson(req, []);
+      if (!db.deleteReward(rewardRoute[1])) throw bad();
+      log("info", "reward delete");
       send(res, 200, db.readState(clock));
       return;
     }

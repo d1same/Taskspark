@@ -77,6 +77,23 @@ CREATE TABLE IF NOT EXISTS period_wins (
   tied INTEGER NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rewards (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  cost INTEGER NOT NULL,
+  category TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS redemptions (
+  id TEXT PRIMARY KEY,
+  reward_id TEXT NOT NULL,
+  reward_title TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  member_name TEXT NOT NULL,
+  cost INTEGER NOT NULL,
+  at TEXT NOT NULL
+);
 `;
 
 function hashToken(token) {
@@ -134,6 +151,35 @@ export function openDatabase(file) {
          FROM tasks ORDER BY position, id`,
       )
       .all();
+  }
+
+  function rewardRows() {
+    return db
+      .prepare(
+        `SELECT id, title, detail, cost, category, created_at AS createdAt
+         FROM rewards ORDER BY cost, title`,
+      )
+      .all();
+  }
+
+  function redemptionRows() {
+    return db
+      .prepare(
+        `SELECT id, reward_id AS rewardId, reward_title AS rewardTitle, member_id AS memberId,
+                member_name AS memberName, cost, at
+         FROM redemptions ORDER BY at DESC, id`,
+      )
+      .all();
+  }
+
+  function wallet(memberId) {
+    const earned = db
+      .prepare("SELECT COALESCE(SUM(points), 0) AS n FROM awards WHERE member_id = ? AND undone_at IS NULL")
+      .get(memberId).n;
+    const spent = db
+      .prepare("SELECT COALESCE(SUM(cost), 0) AS n FROM redemptions WHERE member_id = ?")
+      .get(memberId).n;
+    return earned - spent;
   }
 
   function awards() {
@@ -324,6 +370,8 @@ export function openDatabase(file) {
           lastMonth: summary.lastMonth,
         },
         periods: wins(),
+        rewards: rewardRows(),
+        redemptions: redemptionRows(),
       };
     },
     addMember(name, color, now) {
@@ -477,6 +525,36 @@ export function openDatabase(file) {
         );
       });
     },
+    addReward(title, detail, cost, category, now) {
+      return tx(() => {
+        const id = randomUUID();
+        db.prepare(
+          "INSERT INTO rewards (id, title, detail, cost, category, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(id, title, detail, cost, category, now.toISOString());
+        return id;
+      });
+    },
+    deleteReward(id) {
+      return tx(() => {
+        const row = db.prepare("SELECT id FROM rewards WHERE id = ?").get(id);
+        if (!row) return false;
+        db.prepare("DELETE FROM rewards WHERE id = ?").run(id);
+        return true;
+      });
+    },
+    claimReward(id, memberId, now) {
+      return tx(() => {
+        const reward = db.prepare("SELECT id, title, cost FROM rewards WHERE id = ?").get(id);
+        const member = db.prepare("SELECT id, name FROM members WHERE id = ?").get(memberId);
+        if (!reward || !member) return null;
+        if (wallet(memberId) < reward.cost) return false;
+        db.prepare(
+          `INSERT INTO redemptions (id, reward_id, reward_title, member_id, member_name, cost, at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(randomUUID(), reward.id, reward.title, member.id, member.name, reward.cost, now.toISOString());
+        return true;
+      });
+    },
     resetNow(now) {
       return tx(() => {
         const row = settings();
@@ -504,6 +582,8 @@ export function openDatabase(file) {
         db.exec("DELETE FROM awards");
         db.exec("DELETE FROM members");
         db.exec("DELETE FROM period_wins");
+        db.exec("DELETE FROM rewards");
+        db.exec("DELETE FROM redemptions");
         db.prepare("UPDATE settings SET cutoff = NULL, reset_mode = 'never', weights_on = 0 WHERE id = 1").run();
       });
     },
@@ -513,6 +593,8 @@ export function openDatabase(file) {
         db.exec("DELETE FROM awards");
         db.exec("DELETE FROM members");
         db.exec("DELETE FROM period_wins");
+        db.exec("DELETE FROM rewards");
+        db.exec("DELETE FROM redemptions");
         db.exec("DELETE FROM devices");
         db.prepare(
           `UPDATE settings SET timezone = ?, code_salt = NULL, code_hash = NULL, reset_mode = 'never', cutoff = NULL, weights_on = 0 WHERE id = 1`,

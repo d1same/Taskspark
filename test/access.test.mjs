@@ -383,3 +383,73 @@ test("a joined phone shows its browser, and an approved phone can name it", asyn
     app.close();
   }
 });
+
+test("a reward spends the points that person has earned", async () => {
+  const lines = [];
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (chunk, encoding, callback) => {
+    lines.push(String(chunk));
+    return write(chunk, encoding, callback);
+  };
+  const dir = mkdtempSync(join(tmpdir(), "taskspark-"));
+  const app = createApp({ dataFile: join(dir, "board.sqlite") });
+  const { url } = await app.listen();
+  try {
+    const setup = await api(url, "/api/setup", {
+      method: "POST",
+      body: { code: "harbor-light", confirm: "harbor-light" },
+    });
+    const owner = tokenFrom(setup.res);
+    const member = await api(url, "/api/members", {
+      method: "POST",
+      token: owner,
+      body: { name: "Ada", color: "#c56a4a" },
+    });
+    const person = member.json.members[0];
+    const task = await api(url, "/api/tasks", {
+      method: "POST",
+      token: owner,
+      body: { title: "Dishes", points: 20, assigneeId: null, bucket: "today", repeat: "none" },
+    });
+    const id = task.json.tasks.find((row) => row.title === "Dishes").id;
+    await api(url, `/api/tasks/${id}/complete`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: person.id },
+    });
+    const added = await api(url, "/api/rewards", {
+      method: "POST",
+      token: owner,
+      body: { title: "Movie pick", detail: "They choose the film", cost: 20, category: "privilege" },
+    });
+    assert.equal(added.res.status, 200);
+    const reward = added.json.rewards[0];
+    const broke = await api(url, `/api/rewards/${reward.id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: person.id, cost: 5 },
+    });
+    assert.equal(broke.res.status, 400);
+    const claimed = await api(url, `/api/rewards/${reward.id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: person.id },
+    });
+    assert.equal(claimed.res.status, 200);
+    assert.equal(claimed.json.redemptions[0].cost, 20);
+    assert.equal(claimed.json.redemptions[0].memberName, "Ada");
+    const again = await api(url, `/api/rewards/${reward.id}/claim`, {
+      method: "POST",
+      token: owner,
+      body: { memberId: person.id },
+    });
+    assert.equal(again.res.status, 400);
+    const text = lines.join("");
+    assert.equal(text.includes("harbor-light"), false);
+    assert.equal(text.includes("Movie pick"), false);
+    assert.match(text, /info reward claim/);
+  } finally {
+    process.stdout.write = write;
+    app.close();
+  }
+});

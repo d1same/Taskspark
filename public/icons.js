@@ -25,6 +25,16 @@ const PATHS = {
   gear: '<path d="M14.7 6.4a3.1 3.1 0 0 0-4.2 4L5 16.1a1.5 1.5 0 0 0 2.1 2.1l5.7-5.6a3.1 3.1 0 0 0 4-4.2l-1.9 1.9-2.2-2.2Z"/>',
   grip: '<circle cx="9" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="17" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="1.15" fill="currentColor" stroke="none"/>',
   phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17.2h2"/>',
+  bolt: '<path d="M13 2.8 5 13.2h6.2L10.2 21 19 10.2h-6.2L13 2.8z"/>',
+  bell: '<path d="M6.2 16.2h11.6L16.6 14V10a4.6 4.6 0 0 0-9.2 0v4z"/><path d="M10 16.2a2 2 0 0 0 4 0"/>',
+  list: '<path d="M9 7h10M9 12h10M9 17h10"/><circle cx="5.2" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="5.2" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="5.2" cy="17" r="1" fill="currentColor" stroke="none"/>',
+  medal: '<circle cx="12" cy="15" r="5"/><path d="M8.8 10.4 7.2 3.5h3.1L12 7.2l1.7-3.7h3.1l-1.6 6.9"/>',
+  gift: '<rect x="4" y="10" width="16" height="10" rx="1.6"/><path d="M4 14.2h16M12 10v10M12 10c-1.8 0-3.6-1-3.6-2.6S10 5 12 8.2C14 5 15.8 6 15.8 7.4S13.8 10 12 10"/>',
+  home: '<path d="M4 11.2 12 4.8l8 6.4V20H4z"/><path d="M10 20v-5.5h4V20"/>',
+  pin: '<path d="M9 3.5h6l-1 6.2 3 2.1v1.7H7v-1.7l3-2.1z"/><path d="M12 13.5V20.5"/>',
+  lock: '<rect x="6" y="10.5" width="12" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  shield: '<path d="M12 3.2 19 6.2v5.6c0 4-2.8 6.5-7 7.8-4.2-1.3-7-3.8-7-7.8V6.2z"/>',
 };
 
 export function icon(name) {
