@@ -336,11 +336,10 @@ export function openDatabase(file) {
         });
         const position = siblings.reduce((max, task) => Math.max(max, task.position), -1) + 1;
         const id = randomUUID();
-        const weight = row.weights_on === 1 ? input.weight || "medium" : null;
         db.prepare(
           `INSERT INTO tasks (id, title, points, weight, assignee_id, due, position, repeat, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).run(id, input.title, input.points, weight, input.assigneeId, due, position, input.repeat, now.toISOString());
+        ).run(id, input.title, input.points, null, input.assigneeId, due, position, input.repeat, now.toISOString());
         return id;
       });
     },
@@ -358,10 +357,9 @@ export function openDatabase(file) {
           const isLater = !current.due || (current.due !== bounds.today && current.due !== bounds.tomorrow && current.due > bounds.today);
           if (!isLater) due = null;
         }
-        const weight = row.weights_on === 1 ? input.weight || null : null;
         db.prepare(
           `UPDATE tasks SET title = ?, points = ?, weight = ?, assignee_id = ?, due = ?, repeat = ? WHERE id = ?`,
-        ).run(input.title, input.points, weight, input.assigneeId, due, input.repeat, id);
+        ).run(input.title, input.points, null, input.assigneeId, due, input.repeat, id);
         return true;
       });
     },

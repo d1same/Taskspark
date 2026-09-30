@@ -156,11 +156,11 @@ test("a tie or a zero week has no winner, and undo drops the points", () => {
   assert.equal(undone.lastWeek, null);
 });
 
-test("weight scales points only when the setting is on", () => {
-  assert.equal(resultingPoints(5, "small", true), 5);
-  assert.equal(resultingPoints(5, "medium", true), 10);
-  assert.equal(resultingPoints(5, "big", true), 15);
-  assert.equal(resultingPoints(5, "big", false), 5);
+test("a task is worth its points, with no size multiplier", () => {
+  assert.equal(resultingPoints(5), 5);
+  assert.equal(resultingPoints(10), 10);
+  assert.equal(resultingPoints(20), 20);
+  assert.equal(resultingPoints(20, "big", true), 20);
 });
 
 test("repeat moves the due date and a second completion the same day does not count", () => {

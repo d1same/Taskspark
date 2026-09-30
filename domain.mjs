@@ -11,8 +11,6 @@ export const PALETTE = [
   "#3f6f62",
 ];
 
-export const WEIGHT_FACTOR = { small: 1, medium: 2, big: 3 };
-
 const WEEKDAY = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 
 export function pad(n) {
@@ -129,9 +127,8 @@ export function periodBounds(now, timeZone) {
   };
 }
 
-export function resultingPoints(points, weight, weightsOn) {
-  if (!weightsOn) return points;
-  return points * (WEIGHT_FACTOR[weight] || 1);
+export function resultingPoints(points) {
+  return points;
 }
 
 export function bucketFor(due, today, tomorrow) {

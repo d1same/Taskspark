@@ -137,7 +137,7 @@ function codeText(value) {
 }
 
 function pointsOf(value) {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 100) return null;
+  if (value !== 5 && value !== 10 && value !== 20) return null;
   return value;
 }
 
@@ -343,7 +343,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
 
     if (req.method === "POST" && path === "/api/tasks") {
       requireBoard(req);
-      const body = await readJson(req, ["title", "points", "assigneeId", "bucket", "repeat", "weight"]);
+      const body = await readJson(req, ["title", "points", "assigneeId", "bucket", "repeat"]);
       const title = text(body.title, 80);
       const points = pointsOf(body.points);
       const assigneeId = optionalId(body.assigneeId);
@@ -353,10 +353,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       if (body.assigneeId !== null && !assigneeId) throw bad();
       if (!["today", "tomorrow", "later"].includes(bucket)) throw bad();
       if (!["none", "daily", "weekly"].includes(repeat)) throw bad();
-      if (body.weight !== undefined && body.weight !== null && !["small", "medium", "big"].includes(body.weight)) {
-        throw bad();
-      }
-      if (!db.addTask({ title, points, assigneeId, bucket, repeat, weight: body.weight || null }, clock)) throw bad();
+      if (!db.addTask({ title, points, assigneeId, bucket, repeat }, clock)) throw bad();
       send(res, 200, db.readState(clock));
       return;
     }
@@ -386,7 +383,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
         send(res, 200, { ...db.readState(clock), awarded: result });
         return;
       }
-      const body = await readJson(req, ["title", "points", "assigneeId", "bucket", "repeat", "weight", "due"]);
+      const body = await readJson(req, ["title", "points", "assigneeId", "bucket", "repeat", "due"]);
       const title = text(body.title, 80);
       const points = pointsOf(body.points);
       const assigneeId = optionalId(body.assigneeId);
@@ -394,15 +391,12 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       if (!title || !points || !["none", "daily", "weekly"].includes(repeat)) throw bad();
       if (body.assigneeId !== null && !assigneeId) throw bad();
       if (body.bucket !== undefined && !["today", "tomorrow", "later"].includes(body.bucket)) throw bad();
-      if (body.weight !== undefined && body.weight !== null && !["small", "medium", "big"].includes(body.weight)) {
-        throw bad();
-      }
       let due;
       if (body.due === null) due = null;
       else if (body.due === undefined) due = undefined;
       else if (typeof body.due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.due)) due = body.due;
       else throw bad();
-      if (!db.updateTask(taskRoute[1], { title, points, assigneeId, bucket: body.bucket, repeat, weight: body.weight ?? null, due }, clock)) {
+      if (!db.updateTask(taskRoute[1], { title, points, assigneeId, bucket: body.bucket, repeat, due }, clock)) {
         throw bad();
       }
       send(res, 200, db.readState(clock));

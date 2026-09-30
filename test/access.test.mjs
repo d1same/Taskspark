@@ -193,7 +193,7 @@ test("an unapproved device cannot read or write, and the code is not stored in p
     const injected = await api(url, "/api/tasks", {
       method: "POST",
       token: owner,
-      body: { title: "Fold'); DROP TABLE tasks;--", points: 1, assigneeId: null, bucket: "later", repeat: "none" },
+      body: { title: "Fold'); DROP TABLE tasks;--", points: 5, assigneeId: null, bucket: "later", repeat: "none" },
     });
     assert.equal(injected.res.status, 200);
     assert.equal(injected.json.tasks.some((task) => task.title.includes("DROP TABLE")), true);
@@ -218,7 +218,7 @@ test("an unapproved device cannot read or write, and the code is not stored in p
   saved.close();
 });
 
-test("weight changes the awarded points, and a reset keeps the closed winner without deleting completions", async () => {
+test("a task worth 20 awards 20, and a reset keeps the closed winner without deleting completions", async () => {
   const dir = mkdtempSync(join(tmpdir(), "taskspark-"));
   const app = createApp({ dataFile: join(dir, "board.sqlite") });
   const { url } = await app.listen();
@@ -234,26 +234,37 @@ test("weight changes the awarded points, and a reset keeps the closed winner wit
       body: { name: "Fern", color: "#d4a054" },
     });
     const fernId = member.json.members[0].id;
-    await api(url, "/api/weights", { method: "POST", token: owner, body: { on: true } });
+    const rejected = await api(url, "/api/tasks", {
+      method: "POST",
+      token: owner,
+      body: { title: "Typed", points: 50, assigneeId: fernId, bucket: "today", repeat: "none" },
+    });
+    assert.equal(rejected.res.status, 400);
+    const multiplied = await api(url, "/api/tasks", {
+      method: "POST",
+      token: owner,
+      body: { title: "Sweep", points: 20, assigneeId: fernId, bucket: "today", repeat: "none", weight: "big" },
+    });
+    assert.equal(multiplied.res.status, 400);
     const created = await api(url, "/api/tasks", {
       method: "POST",
       token: owner,
-      body: { title: "Sweep", points: 5, assigneeId: fernId, bucket: "today", repeat: "none", weight: "big" },
+      body: { title: "Sweep", points: 20, assigneeId: fernId, bucket: "today", repeat: "none" },
     });
-    assert.equal(created.json.tasks[0].score, 15);
+    assert.equal(created.json.tasks[0].score, 20);
     const taskId = created.json.tasks[0].id;
     const done = await api(url, `/api/tasks/${taskId}/complete`, {
       method: "POST",
       token: owner,
       body: { memberId: fernId },
     });
-    assert.equal(done.json.leaderboard.allTime[0].points, 15);
-    assert.equal(done.json.completed[0].points, 15);
+    assert.equal(done.json.leaderboard.allTime[0].points, 20);
+    assert.equal(done.json.completed[0].points, 20);
     const reset = await api(url, "/api/reset-now", { method: "POST", token: owner, body: {} });
     assert.equal(reset.json.periods[0].memberName, "Fern");
-    assert.equal(reset.json.periods[0].points, 15);
+    assert.equal(reset.json.periods[0].points, 20);
     assert.equal(reset.json.completed.length, 1);
-    assert.equal(reset.json.leaderboard.allTime[0].points, 15);
+    assert.equal(reset.json.leaderboard.allTime[0].points, 20);
     assert.equal(reset.json.leaderboard.period[0].points, 0);
     const twice = await api(url, `/api/tasks/${taskId}/complete`, {
       method: "POST",

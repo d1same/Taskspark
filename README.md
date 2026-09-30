@@ -2,7 +2,7 @@
 
 Taskspark is a family chore board and a points board. One phone sets a household code. That phone is approved. Later phones enter the same code and wait until an approved phone accepts them under Admin, Devices.
 
-The board is Today, Tomorrow, and Later. The crown opens the scoreboard. The menu opens Calendar, Completed, and Admin.
+The board is Today, Tomorrow, and Later. Each task is worth 5, 10, or 20 points. The crown opens the scoreboard. The menu opens Calendar, Completed, and Admin.
 
 There is no household code in the image. The first phone chooses it.
 

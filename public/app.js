@@ -10,6 +10,7 @@ const ui = {
   day: null,
   adding: false,
   editing: null,
+  boardPeriod: "week",
   confirm: null,
   toast: null,
   error: "",
@@ -23,7 +24,7 @@ let sheetEpoch = 0;
 function blankFields() {
   return {
     title: "",
-    points: 1,
+    points: 10,
     assigneeId: "",
     bucket: "today",
     repeat: "none",
@@ -145,76 +146,123 @@ function toast() {
   return `<div class="toast" role="status"><p>${icon("points")} ${esc(ui.toast.text)}</p><button data-undo="${esc(ui.toast.id)}">Undo</button></div>`;
 }
 
+function repeatLabel(task) {
+  if (task.repeat === "daily") return "Daily";
+  if (task.repeat === "weekly") return "Weekly";
+  return "";
+}
+
+function pointsPill(score) {
+  return `<span class="points-pill">${icon("points")}<span>${score}</span></span>`;
+}
+
+function pointsPick(current) {
+  const value = Number(current);
+  return `<div class="points-picks" role="group" aria-label="Points">${[5, 10, 20]
+    .map((points) => `<button type="button" data-set="points" data-value="${points}" aria-pressed="${value === points}">${points}</button>`)
+    .join("")}</div>`;
+}
+
+function chosenPoints() {
+  const points = Number(ui.fields.points);
+  return points === 5 || points === 10 || points === 20 ? points : null;
+}
+
 function taskCard(task, allowDrag) {
   const who = memberById(task.assigneeId);
-  const weight = state.weightsOn && task.weight ? icon(task.weight) : "";
-  const repeat = task.repeat === "daily" ? "Daily" : task.repeat === "weekly" ? "Weekly" : "";
+  const repeat = repeatLabel(task);
   return `<article class="task" data-id="${esc(task.id)}">
-    ${allowDrag ? `<button class="grip" data-grip aria-label="Reorder">${icon("grip")}</button>` : ""}
-    <div class="task-body">
-      <h3>${esc(task.title)}</h3>
-      <p class="meta">${icon("points")} ${task.score} ${weight} ${who ? avatar(who.name, who.color) : ""} ${esc(personLabel(task.assigneeId))} ${esc(repeat)}</p>
-      ${allowDrag ? `<div class="segment">
-        <button data-move="today" aria-pressed="${task.bucket === "today"}">Today</button>
-        <button data-move="tomorrow" aria-pressed="${task.bucket === "tomorrow"}">Tomorrow</button>
-        <button data-move="later" aria-pressed="${task.bucket === "later"}">Later</button>
-      </div>` : ""}
-      ${task.resting ? "" : `<button class="complete" data-complete="${esc(task.id)}">${icon("complete")} Complete</button>`}
-      ${allowDrag ? `<button data-edit="${esc(task.id)}">Edit</button>` : ""}
-      ${ui.editing === task.id ? editForm(task) : ""}
+    <div class="task-row">
+      ${allowDrag ? `<button class="grip" data-grip aria-label="Reorder">${icon("grip")}</button>` : ""}
+      ${task.resting ? `<span class="resting">Done</span>` : `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}">${icon("complete")}</button>`}
+      <div class="task-copy">
+        <h3>${esc(task.title)}</h3>
+        <p class="meta">${who ? avatar(who.name, who.color) : ""}<span>${esc(personLabel(task.assigneeId))}${repeat ? ` · ${esc(repeat)}` : ""}</span></p>
+      </div>
+      ${pointsPill(task.score)}
     </div>
+    ${allowDrag ? `<div class="segment" aria-label="When">
+      <button data-move="today" aria-pressed="${task.bucket === "today"}">Today</button>
+      <button data-move="tomorrow" aria-pressed="${task.bucket === "tomorrow"}">Tomorrow</button>
+      <button data-move="later" aria-pressed="${task.bucket === "later"}">Later</button>
+    </div>
+    <button data-edit="${esc(task.id)}">Edit</button>` : ""}
+    ${ui.editing === task.id ? editForm(task) : ""}
   </article>`;
 }
 
 function editForm(task) {
+  const stored = Number(task.points);
+  const legacy = stored !== 5 && stored !== 10 && stored !== 20
+    ? `<p class="quiet">This task is worth ${stored}. Pick 5, 10, or 20.</p>`
+    : "";
   return `<div class="panel">
     <label>Title<input data-field="title" value="${esc(ui.fields.title || task.title)}"></label>
-    <label>Points<input data-field="points" type="number" min="1" max="100" value="${esc(ui.fields.points || task.points)}"></label>
+    ${pointsPick(ui.fields.points)}
+    ${legacy}
     <label>Date<input data-field="due" type="date" value="${esc(ui.fields.due || task.due || "")}"></label>
     <div class="segment">
       <button data-set="repeat" data-value="none" aria-pressed="${(ui.fields.repeat || task.repeat) === "none"}">Once</button>
       <button data-set="repeat" data-value="daily" aria-pressed="${(ui.fields.repeat || task.repeat) === "daily"}">Daily</button>
       <button data-set="repeat" data-value="weekly" aria-pressed="${(ui.fields.repeat || task.repeat) === "weekly"}">Weekly</button>
     </div>
-    ${weightPicks(ui.fields.weight || task.weight || "medium")}
     <button class="primary" data-save-task="${esc(task.id)}">Save</button>
     <button class="danger" data-delete-task="${esc(task.id)}">Delete</button>
   </div>`;
 }
 
-function weightPicks(current) {
-  if (!state.weightsOn) return "";
-  return `<div class="segment" aria-label="Size">
-    <button data-set="weight" data-value="small" aria-pressed="${current === "small"}">${icon("small")} Small</button>
-    <button data-set="weight" data-value="medium" aria-pressed="${current === "medium"}">${icon("medium")} Medium</button>
-    <button data-set="weight" data-value="big" aria-pressed="${current === "big"}">${icon("big")} Big</button>
-  </div>`;
+function lane(name, title, tasks, empty) {
+  const count = tasks.length;
+  const body = count
+    ? tasks.map((task) => taskCard(task, true)).join("")
+    : `<p class="empty-row">${empty}</p>`;
+  return `<section class="lane ${name}" data-bucket="${name}">
+    <div class="lane-head"><h2>${title}</h2><span class="count">${count}</span></div>
+    ${body}
+  </section>`;
 }
 
-function bucket(name, title, tasks) {
-  const empty = name === "tomorrow" ? "Tomorrow is clear." : name === "later" ? "Nothing waiting." : "";
-  const body = tasks.length ? tasks.map((task) => taskCard(task, true)).join("") : empty ? `<p class="quiet">${empty}</p>` : "";
-  return `<section class="bucket ${name}" data-bucket="${name}"><h2>${title}</h2>${body}</section>`;
+function spotlight() {
+  if (!state.hero) {
+    const overdue = state.overdue?.length
+      ? `<button data-view="calendar">${icon("calendar")} Earlier tasks are on the calendar</button>`
+      : "";
+    return `<section class="spotlight is-empty">
+      <div class="empty-mark" aria-hidden="true">${icon("points")}</div>
+      <p class="kicker">Now</p>
+      <h2>Nothing to do right now</h2>
+      <p class="quiet">The next task shows up here.</p>
+      ${overdue}
+    </section>`;
+  }
+  const hero = state.hero;
+  const who = memberById(hero.assigneeId);
+  const repeat = repeatLabel(hero);
+  return `<section class="spotlight" data-id="${esc(hero.id)}">
+    <div class="spotlight-top">
+      <p class="kicker">Now</p>
+      ${pointsPill(hero.score)}
+    </div>
+    <h2>${esc(hero.title)}</h2>
+    <p class="meta">${who ? avatar(who.name, who.color) : ""}<span>${esc(personLabel(hero.assigneeId))}${repeat ? ` · ${esc(repeat)}` : ""}</span></p>
+    <button class="complete" data-complete="${esc(hero.id)}">${icon("complete")} Complete</button>
+    <div class="move-row">
+      <span class="quiet">Move</span>
+      <button data-move="tomorrow">Tomorrow</button>
+      <button data-move="later">Later</button>
+    </div>
+  </section>`;
 }
 
 function board() {
-  const hero = state.hero
-    ? `<section class="hero" data-id="${esc(state.hero.id)}"><p class="kicker">Do this now</p><h2>${esc(state.hero.title)}</h2><p class="meta">${icon("points")} ${state.hero.score}</p>
-        <div class="segment">
-          <button data-move="today" aria-pressed="true">Today</button>
-          <button data-move="tomorrow">Tomorrow</button>
-          <button data-move="later">Later</button>
-        </div>
-        <button class="complete" data-complete="${esc(state.hero.id)}">${icon("complete")} Complete</button></section>`
-    : `<section class="hero"><p class="kicker">Do this now</p><h2>Nothing dated today.</h2>${state.overdue?.length ? `<p class="quiet">Earlier tasks are on the calendar.</p>` : ""}</section>`;
-  return `${hero}
+  return `${spotlight()}
     ${toast()}
-    <div class="days">
-      ${bucket("today", "Today", state.todayTasks || [])}
-      ${bucket("tomorrow", "Tomorrow", state.tomorrowTasks || [])}
-      ${bucket("later", "Later", state.laterTasks || [])}
+    <div class="lanes">
+      ${lane("today", "Today", state.todayTasks || [], "Nothing else today.")}
+      ${lane("tomorrow", "Tomorrow", state.tomorrowTasks || [], "Tomorrow is clear.")}
+      ${lane("later", "Later", state.laterTasks || [], "Nothing waiting.")}
     </div>
-    <section class="panel">
+    <section class="composer">
       <button data-action="add-toggle">${ui.adding ? "Close" : "Add a task"}</button>
       ${ui.adding ? addForm() : ""}
       ${state.members?.length ? "" : `<p class="quiet">Add a person in Admin.</p>`}
@@ -227,7 +275,7 @@ function addForm() {
     .concat((state.members || []).map((member) => `<button data-set="assigneeId" data-value="${esc(member.id)}" aria-pressed="${ui.fields.assigneeId === member.id}">${esc(member.name)}</button>`))
     .join("");
   return `<label>Title<input data-field="title" value="${esc(ui.fields.title)}"></label>
-    <label>Points<input data-field="points" type="number" min="1" max="100" value="${esc(ui.fields.points)}"></label>
+    ${pointsPick(ui.fields.points)}
     <div class="segment wrap">${people}</div>
     <div class="segment">
       <button data-set="bucket" data-value="today" aria-pressed="${ui.fields.bucket === "today"}">Today</button>
@@ -239,7 +287,6 @@ function addForm() {
       <button data-set="repeat" data-value="daily" aria-pressed="${ui.fields.repeat === "daily"}">Daily</button>
       <button data-set="repeat" data-value="weekly" aria-pressed="${ui.fields.repeat === "weekly"}">Weekly</button>
     </div>
-    ${weightPicks(ui.fields.weight)}
     <button class="primary" data-action="add-task">Add</button>`;
 }
 
@@ -312,8 +359,8 @@ function completed() {
 }
 
 function admin() {
-  const tabs = ["household", "people", "devices", "leaderboard", "weight"].map((tab) => {
-    const label = { household: "Household", people: "People", devices: "Devices", leaderboard: "Leaderboard", weight: "Task weight" }[tab];
+  const tabs = ["household", "people", "devices", "leaderboard"].map((tab) => {
+    const label = { household: "Household", people: "People", devices: "Devices", leaderboard: "Leaderboard" }[tab];
     return `<button data-admin="${tab}" aria-pressed="${ui.admin === tab}">${label}</button>`;
   }).join("");
   return `<section class="stack"><button data-view="board">Board</button><div class="tabs">${tabs}</div>${adminPane()}</section>`;
@@ -323,10 +370,6 @@ function adminPane() {
   if (ui.admin === "people") return peoplePane();
   if (ui.admin === "devices") return `<div id="devices"><p class="quiet">Loading devices.</p></div>`;
   if (ui.admin === "leaderboard") return leaderPane();
-  if (ui.admin === "weight") {
-    return `<section class="panel"><p>Small, Medium, and Big change the points a task is worth.</p>
-      <button class="primary" data-action="weights">${state.weightsOn ? "Weight is on" : "Weight is off"}</button></section>`;
-  }
   return `<section class="panel">
     <label>Timezone<input data-field="timezone" value="${esc(ui.fields.timezone || state.timezone || "")}" list="zones"></label>
     <datalist id="zones">
@@ -378,38 +421,62 @@ function ranked(rows) {
   return [...(rows || [])].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
 }
 
-function scoreList(title, rows, mark, skip = 0) {
-  const lines = ranked(rows).slice(skip).map((row) => {
-    const member = memberById(row.memberId);
-    return `<p class="score-line"><span class="person">${member ? avatar(member.name, member.color) : ""} ${esc(row.name)}</span><span>${icon("points")} ${row.points}</span></p>`;
-  }).join("");
-  if (skip && !lines) return "";
-  return `<section class="score-block"><h2>${mark || ""} ${title}</h2>${lines || `<p class="quiet">No points yet.</p>`}</section>`;
+function placeSlot(row, place) {
+  if (!row) {
+    return `<div class="place place-${place} is-open"><div class="place-block" aria-hidden="true">${place}</div></div>`;
+  }
+  const member = memberById(row.memberId);
+  return `<div class="place place-${place}">
+    <div class="place-person">${place === 1 ? icon("crown") : ""}${member ? avatar(member.name, member.color) : ""}</div>
+    <p class="place-name">${esc(row.name)}</p>
+    <p class="place-points">${icon("points")} ${row.points}</p>
+    <div class="place-block" aria-hidden="true">${place}</div>
+  </div>`;
 }
 
 function podium(rows) {
   const top = ranked(rows).filter((row) => row.points > 0).slice(0, 3);
-  if (!top.length) return `<p class="quiet">No points yet.</p>`;
   const slots = [
     { row: top[1], place: 2 },
     { row: top[0], place: 1 },
     { row: top[2], place: 3 },
   ];
-  return `<div class="podium">${slots.map((slot) => {
-    if (!slot.row) return `<div class="place place-${slot.place}"></div>`;
-    const member = memberById(slot.row.memberId);
-    return `<div class="place place-${slot.place}">
-      <div class="place-person">${slot.place === 1 ? icon("crown") : ""}${member ? avatar(member.name, member.color) : ""}</div>
-      <p class="place-name">${esc(slot.row.name)}</p>
-      <p class="place-points">${icon("points")} ${slot.row.points}</p>
-      <div class="place-block" aria-hidden="true">${slot.place}</div>
-    </div>`;
-  }).join("")}</div>`;
+  return `<div class="podium">${slots.map((slot) => placeSlot(slot.row, slot.place)).join("")}</div>`;
+}
+
+function emptyPodium() {
+  return `<div class="podium is-empty" aria-hidden="true">${[2, 1, 3].map((place) => `<div class="place place-${place}"><div class="place-block">${place}</div></div>`).join("")}</div>`;
+}
+
+function rankRow(row, place) {
+  const member = memberById(row.memberId);
+  return `<li class="rank-row">
+    <span class="rank-num">${place}</span>
+    ${member ? avatar(member.name, member.color) : ""}
+    <span class="rank-name">${esc(row.name)}</span>
+    <span class="rank-points">${row.points}</span>
+  </li>`;
+}
+
+function standings(rows, period) {
+  const ordered = ranked(rows);
+  if (!ordered.some((row) => row.points > 0)) {
+    const sentence = {
+      week: "Nobody has points this week.",
+      month: "Nobody has points this month.",
+      year: "Nobody has points this year.",
+      allTime: "Nobody has points yet.",
+      period: "Nobody has points this period.",
+    }[period];
+    return `${emptyPodium()}<p class="score-empty">${sentence}</p>`;
+  }
+  return `${podium(ordered)}<ol class="rank-list">${ordered.map((row, index) => rankRow(row, index + 1)).join("")}</ol>`;
 }
 
 function winnerLine(title, winner, mark) {
-  const text = winner ? `${esc(winner.name)} ${winner.points}` : "No winner";
-  return `<p class="winner">${mark} ${title} ${text}</p>`;
+  const name = winner ? esc(winner.name) : "No winner";
+  const points = winner ? winner.points : "";
+  return `<p class="winner-row">${mark}<span class="winner-label">${title}</span><span class="winner-name">${name}</span><span class="winner-points">${points}</span></p>`;
 }
 
 function sheet() {
@@ -426,16 +493,17 @@ function sheet() {
       <button data-view="admin">${icon("gear")} Admin</button>`;
   } else if (ui.sheet === "score") {
     const board = state.leaderboard || { allTime: [], week: [], month: [], year: [], period: [], lastWeek: null, lastMonth: null };
-    body = `<h2>${icon("crown")} Scoreboard</h2>
-      <p class="kicker">This week</p>
-      ${podium(board.week)}
-      ${state.cutoff ? scoreList("Period", board.period, "") : ""}
-      ${scoreList("This week", board.week, icon("crown"), 3)}
-      ${scoreList("This month", board.month, icon("month"))}
-      ${scoreList("This year", board.year, icon("year"))}
-      ${scoreList("All-time", board.allTime, icon("points"))}
-      ${winnerLine("Last week", board.lastWeek, icon("crown"))}
-      ${winnerLine("Last month", board.lastMonth, icon("month"))}`;
+    const periods = [["week", "Week"], ["month", "Month"], ["year", "Year"], ["allTime", "All-time"]];
+    if (state.cutoff) periods.push(["period", "Period"]);
+    if (!periods.some(([key]) => key === ui.boardPeriod)) ui.boardPeriod = "week";
+    const control = periods.map(([key, label]) => `<button data-score="${key}" aria-pressed="${ui.boardPeriod === key}">${label}</button>`).join("");
+    body = `<h2>Scoreboard</h2>
+      <div class="segment" role="group" aria-label="Score period">${control}</div>
+      ${standings(board[ui.boardPeriod] || [], ui.boardPeriod)}
+      <div class="winner-stack">
+        ${winnerLine("Last week", board.lastWeek, icon("crown"))}
+        ${winnerLine("Last month", board.lastMonth, icon("month"))}
+      </div>`;
   } else if (ui.sheet === "complete" || ui.sheet === "reassign") {
     const people = state.members || [];
     body = people.length
@@ -443,7 +511,7 @@ function sheet() {
       : `<p>Add a person in Admin.</p>`;
     body = `<h2>${ui.sheet === "complete" ? "Who did this?" : "Who gets the points?"}</h2>${body}`;
   }
-  return `<dialog class="sheet" id="sheet" closedby="any" aria-label="Taskspark"><div class="sheet-body"><button class="icon-btn" data-close aria-label="Close">${icon("close")}</button>${body}</div></dialog>`;
+  return `<dialog class="sheet" id="sheet" closedby="any" aria-label="Taskspark"><div class="sheet-body"><button class="icon-btn" data-close="1" aria-label="Close">${icon("close")}</button>${body}</div></dialog>`;
 }
 
 function shell() {
@@ -553,14 +621,24 @@ document.addEventListener("click", async (event) => {
     render();
     return;
   }
+  if (target.dataset.score) {
+    ui.boardPeriod = target.dataset.score;
+    render();
+    return;
+  }
   if (target.dataset.action === "add-task") {
+    const points = chosenPoints();
+    if (!points) {
+      ui.error = "Pick 5, 10, or 20.";
+      render();
+      return;
+    }
     const data = await send("api/tasks", "POST", {
       title: field("title"),
-      points: Number(field("points")),
+      points,
       assigneeId: ui.fields.assigneeId || null,
       bucket: ui.fields.bucket,
       repeat: ui.fields.repeat,
-      weight: state.weightsOn ? ui.fields.weight : null,
     });
     if (data) {
       ui.adding = false;
@@ -611,21 +689,25 @@ document.addEventListener("click", async (event) => {
     const task = (state.tasks || []).find((item) => item.id === target.dataset.edit) || state.hero;
     ui.editing = target.dataset.edit;
     ui.fields.title = task?.title || "";
-    ui.fields.points = task?.points || 1;
+    ui.fields.points = task?.points || 10;
     ui.fields.repeat = task?.repeat || "none";
-    ui.fields.weight = task?.weight || "medium";
     ui.fields.due = task?.due || "";
     render();
     return;
   }
   if (target.dataset.saveTask) {
     const task = (state.tasks || []).concat(state.hero || []).find((item) => item && item.id === target.dataset.saveTask);
+    const points = chosenPoints();
+    if (!points) {
+      ui.error = "Pick 5, 10, or 20.";
+      render();
+      return;
+    }
     await send(`api/tasks/${target.dataset.saveTask}`, "POST", {
       title: field("title"),
-      points: Number(field("points")),
+      points,
       assigneeId: task?.assigneeId || null,
       repeat: ui.fields.repeat,
-      weight: state.weightsOn ? ui.fields.weight : null,
       due: field("due") || null,
     });
     ui.editing = null;
@@ -698,11 +780,6 @@ document.addEventListener("click", async (event) => {
       return;
     }
     await send("api/delete-household", "POST", {});
-    return;
-  }
-  if (target.dataset.action === "weights") {
-    await send("api/weights", "POST", { on: !state.weightsOn });
-    render();
     return;
   }
   if (target.dataset.reset) {
