@@ -1,0 +1,10 @@
+.git
+data
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.env
+.env.*
+decisions.tsv
+test
+node_modules
