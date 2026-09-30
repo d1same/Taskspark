@@ -297,29 +297,25 @@ function taskCard(task, allowDrag) {
   const stripe = tone(who?.color);
   const whoPill = who
     ? `<span class="pill ${tone(who.color)}">${dot(who.color)}${esc(who.name)}</span>`
-    : `<span class="pill tone-any">${icon("home")} Open to anyone</span>`;
+    : `<span class="pill tone-any">${icon("home")} Anyone</span>`;
   const owned = Boolean(task.assigneeId);
   const check = task.resting
     ? `<span class="check is-done" aria-hidden="true">${icon("complete")}</span>`
     : owned
-      ? `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"></button>`
-      : `<span class="check is-open" aria-hidden="true"></span>`;
-  const claim = !owned && !task.resting
-    ? `<button class="primary" data-claim-chore="${esc(task.id)}">Claim</button>`
-    : "";
-  const edit = allowDrag ? `<button data-edit="${esc(task.id)}">Edit</button>` : "";
-  const actions = claim || edit ? `<div class="row-actions">${claim}${edit}</div>` : "";
+      ? `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}">${icon("complete")}</button>`
+      : `<button class="check claim-mark" data-claim-chore="${esc(task.id)}">Claim</button>`;
+  const edit = allowDrag ? `<button class="mini" data-edit="${esc(task.id)}">Edit</button>` : "";
   return `<article class="task ${stripe}${task.resting ? " is-done" : ""}" data-id="${esc(task.id)}">
     <div class="task-row">
       ${allowDrag ? `<button class="grip" data-grip aria-label="Reorder">${icon("grip")}</button>` : ""}
       ${check}
       <div class="task-copy">
         <h3>${esc(task.title)}</h3>
-        <p class="meta">${whoPill}${repeat ? `<span>${esc(repeat)}</span>` : ""}</p>
+        ${whoPill}${repeat ? `<span class="quiet">${esc(repeat)}</span>` : ""}
       </div>
       ${badge(task.score)}
+      ${edit}
     </div>
-    ${actions}
     ${ui.editing === task.id ? editForm(task) : ""}
   </article>`;
 }

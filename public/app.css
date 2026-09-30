@@ -455,7 +455,7 @@ html[data-theme="dark"] .track { background: #3a332c; }
 
 .lane { display: grid; gap: 8px; }
 
-.task { overflow: hidden; padding-left: 14px; display: grid; gap: 8px; }
+.task { overflow: hidden; padding: 6px 8px 6px 12px; display: grid; gap: 8px; }
 .task::before {
   content: "";
   position: absolute;
@@ -470,9 +470,19 @@ html[data-theme="dark"] .track { background: #3a332c; }
 .task.is-done h3 { text-decoration: line-through; color: var(--muted); }
 .task.dragging { z-index: 5; opacity: 0.85; }
 
-.task-row { align-items: flex-start; }
-.task-copy { min-width: 0; flex: 1; display: grid; gap: 6px; }
-.task h3 { font-size: 0.98rem; font-weight: 800; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.task-row { align-items: center; justify-content: flex-start; flex-wrap: nowrap; gap: 6px; min-width: 0; width: 100%; }
+.task-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; overflow: hidden; }
+.task h3 {
+  max-width: 100%;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task .pill { flex: none; max-width: 100%; }
 
 .grip, .check {
   width: 44px;
@@ -485,10 +495,27 @@ html[data-theme="dark"] .track { background: #3a332c; }
   flex: none;
 }
 
-.grip { border: 0; background: transparent; color: var(--muted); }
-.check { border: 2px solid var(--line-strong); background: var(--sunken); }
+.grip { width: 32px; border: 0; background: transparent; color: var(--muted); }
+.check { border: 2px solid var(--coral); background: var(--coral-soft); color: var(--coral-deep); }
 .check.is-done { background: var(--green); color: #fff; border-color: var(--green); }
-.check.is-open { border-style: dashed; background: transparent; }
+.check.claim-mark {
+  width: auto;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.task .mini {
+  width: auto;
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  box-shadow: none;
+}
 
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; font-weight: 700; }
 
