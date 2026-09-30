@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Taskspark</Name>
+  <Repository>ghcr.io/d1same/taskspark:latest</Repository>
+  <Registry>https://github.com/d1same/Taskspark/pkgs/container/taskspark</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/d1same/Taskspark</Support>
+  <Project>https://github.com/d1same/Taskspark</Project>
+  <Overview>Family chore board and points board. The first phone sets a household code. Later phones wait until an approved phone accepts them. Runs as user 1000. The appdata folder must be writable by that user.</Overview>
+  <Category>HomeAutomation: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/d1same/Taskspark/main/unraid/taskspark.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/d1same/Taskspark/main/public/icon-512.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web UI" Target="8080" Default="8080" Mode="tcp" Description="Host port 8080 to container port 8080" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Appdata" Target="/data" Default="/mnt/user/appdata/taskspark" Mode="rw" Description="Household database" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/taskspark</Config>
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Household timezone" Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
+</Container>

@@ -2,6 +2,7 @@ name: Taskspark
 version: "1.0.0"
 slug: taskspark
 description: Family chore board and reward board
+image: ghcr.io/d1same/taskspark:latest
 arch:
   - amd64
   - aarch64

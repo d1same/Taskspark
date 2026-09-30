@@ -4,38 +4,53 @@ Taskspark is a family chore board and a points board. One phone sets a household
 
 The board is Today, Tomorrow, and Later. The crown opens the scoreboard. The menu opens Calendar, Completed, and Admin.
 
+There is no household code in the image. The first phone chooses it.
+
+## Run with Docker
+
+You put the board on the kitchen computer. Chores stay in the data folder, so a reboot does not wipe the house.
+
+```bash
+docker run -d --name taskspark --restart unless-stopped -p 8080:8080 -v taskspark:/data ghcr.io/d1same/taskspark:latest
+```
+
+To keep the database in a folder on the computer instead of a named volume, use `-v /path/to/taskspark:/data` in that same command.
+
+Open `http://127.0.0.1:8080`.
+
+The container runs as user id 1000. That user must be allowed to write the data folder.
+
 ## Run with Docker Compose
 
-From this folder, run:
+From this folder:
 
 ```bash
 docker compose up -d
 ```
 
-Open `http://127.0.0.1:8080`.
+Compose pulls `ghcr.io/d1same/taskspark:latest`. To build from this folder instead, see the comment in `docker-compose.yml`.
 
-The SQLite file is in the `taskspark` volume, mounted at `/data` in the container.
+## Unraid
 
-## Run with Docker
+Add a container in the Docker page.
 
-Build the image, then start it:
+- Image: `ghcr.io/d1same/taskspark:latest`
+- Network: bridge
+- Port: host `8080` to container `8080`
+- Path: `/mnt/user/appdata/taskspark` to `/data`
+- Variable: `TZ` = `America/New_York`
+- Privileged: off
+- Extra devices: none
 
-```bash
-docker build -t taskspark .
-docker run -d --name taskspark -p 8080:8080 -v taskspark:/data taskspark
-```
+The appdata folder must be writable by user id 1000.
 
-The image uses `node:22.14-bookworm-slim`, which publishes `linux/amd64` and `linux/arm64`. To build both at once:
+`unraid/taskspark.xml` is a Community Applications style template with those same fields. Paste this template URL into the Unraid Docker UI:
 
-```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t taskspark .
-```
-
-There is no household code in the image. The first phone chooses it.
+`https://raw.githubusercontent.com/d1same/Taskspark/main/unraid/taskspark.xml`
 
 ## Home Assistant
 
-This folder is a local add-on. `config.yaml` sits next to the `Dockerfile`.
+This folder is a local add-on. `config.yaml` pulls `ghcr.io/d1same/taskspark:latest`. The Dockerfile beside it is that same image when the store builds locally.
 
 1. Copy this folder to `/addons/taskspark` on the Home Assistant host.
 2. Open Settings, Add-ons, Add-on store. Reload the store.
