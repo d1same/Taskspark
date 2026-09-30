@@ -566,7 +566,7 @@ function applyTheme(theme) {
   const scheme = document.querySelector('meta[name="color-scheme"]');
   if (scheme) scheme.content = next;
   const color = document.querySelector('meta[name="theme-color"]');
-  if (color) color.content = next === "dark" ? "#1b1714" : "#f3eee6";
+  if (color) color.content = next === "dark" ? "#141311" : "#f6f3ec";
   try {
     localStorage.setItem("taskspark-theme", next);
   } catch {
