@@ -22,6 +22,18 @@ Open `http://127.0.0.1:7370`.
 
 The container runs as user id 1000. That user must be allowed to write the data folder.
 
+Logs are one line each, with a time and the word info or error. Read them with `docker logs taskspark`. On Unraid, open the container log.
+
+## Roll back
+
+`latest` is the newest image. This logs release is `0.1.0`. To go back, set the tag to an older version, for example `ghcr.io/d1same/taskspark:0.1.0`, instead of `latest`.
+
+```bash
+docker run -d --name taskspark --restart unless-stopped -p 7370:7370 -v taskspark:/data ghcr.io/d1same/taskspark:0.1.0
+```
+
+The data folder stays. Bump the `VERSION` file for the next release so `0.1.0` stays on this image.
+
 ## Run with Docker Compose
 
 From this folder:
@@ -45,6 +57,8 @@ Add a container in the Docker page.
 - Extra devices: none
 
 The appdata folder must be writable by user id 1000.
+
+To roll back, edit the container and set the repository to an older tag, for example `ghcr.io/d1same/taskspark:0.1.0`, instead of `latest`. Then apply. Read problems in the container log.
 
 `unraid/taskspark.xml` is a Community Applications style template with those same fields. Paste this template URL into the Unraid Docker UI:
 

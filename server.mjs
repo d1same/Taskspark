@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
-import { extname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PALETTE, openDatabase } from "./db.mjs";
 
@@ -22,6 +22,19 @@ const PHASE = {
   locked: { phase: "locked" },
   waiting: { phase: "waiting" },
 };
+
+const VERSION = readFileSync(new URL("./VERSION", import.meta.url), "utf8").trim();
+
+function log(level, message) {
+  const safe = String(message).replace(/[\u0000-\u001f]/g, " ").slice(0, 300);
+  process.stdout.write(`${new Date().toISOString()} ${level} ${safe}\n`);
+}
+
+function requestPath(req) {
+  const raw = String(req.url || "/");
+  const path = raw.split("?")[0].split("#")[0];
+  return (path.startsWith("/") ? path : "/").slice(0, 200);
+}
 
 function bad(status = 400) {
   const error = new Error("rejected");
@@ -138,7 +151,14 @@ function clientIp(req) {
 }
 
 export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 60 * 1000, now = () => new Date() } = {}) {
-  const db = openDatabase(dataFile);
+  let db;
+  try {
+    db = openDatabase(dataFile);
+  } catch {
+    log("error", "sqlite open failed");
+    throw new Error("sqlite open failed");
+  }
+  log("info", `sqlite open data=${dirname(dataFile)}`);
   const attempts = new Map();
 
   function limited(ip) {
@@ -212,14 +232,19 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       const body = await readJson(req, ["code", "confirm"]);
       const code = codeText(body.code);
       const confirm = codeText(body.confirm);
-      if (!code || code !== confirm) throw bad();
+      if (!code || code !== confirm) {
+        log("error", "setup failed");
+        throw bad();
+      }
       if (db.hasCode()) {
         fail(ip);
+        log("error", "setup failed");
         send(res, 401, PHASE.locked);
         return;
       }
       const device = db.setup(code, clock);
       if (!device) {
+        log("error", "setup failed");
         send(res, 401, PHASE.locked);
         return;
       }
@@ -230,12 +255,14 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
     if (req.method === "POST" && path === "/api/unlock") {
       const body = await readJson(req, ["code"]);
       if (limited(ip)) {
+        log("error", "unlock rate-limited");
         send(res, 401, PHASE.locked);
         return;
       }
       const code = codeText(body.code);
       if (!code || !db.hasCode() || !db.checkCode(code)) {
         fail(ip);
+        log("error", "unlock failed");
         send(res, 401, PHASE.locked);
         return;
       }
@@ -251,6 +278,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       const device = db.unlock(code, clock);
       if (!device) {
         fail(ip);
+        log("error", "unlock failed");
         send(res, 401, PHASE.locked);
         return;
       }
@@ -269,9 +297,17 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       await readJson(req, []);
       const actor = requireBoard(req);
       const target = deviceRoute[1];
-      if (deviceRoute[2] === "revoke" && target === actor.id) throw bad();
-      const ok = db.setDeviceStatus(target, deviceRoute[2] === "approve" ? "approved" : "revoked", clock);
-      if (!ok) throw bad();
+      const action = deviceRoute[2];
+      if (action === "revoke" && target === actor.id) {
+        log("error", "device revoke failed");
+        throw bad();
+      }
+      const ok = db.setDeviceStatus(target, action === "approve" ? "approved" : "revoked", clock);
+      if (!ok) {
+        log("error", `device ${action} failed`);
+        throw bad();
+      }
+      log("info", `device ${action}`);
       send(res, 200, { devices: db.listDevices() });
       return;
     }
@@ -468,12 +504,15 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
   }
 
   const server = createServer((req, res) => {
+    const path = requestPath(req);
+    res.on("finish", () => {
+      log("info", `${req.method || "GET"} ${path} ${res.statusCode}`);
+    });
     handle(req, res).catch((error) => {
       if (res.headersSent) return;
-      const status = error.status || 500;
-      const body = error.body || { error: "unavailable" };
-      if (status === 500) console.error("request failed");
-      send(res, status, body);
+      const status = Number(error.status) || 500;
+      log("error", status >= 500 ? "request failed" : "request rejected");
+      send(res, status, error.body || { error: "unavailable" });
     });
   });
 
@@ -497,10 +536,16 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  const dataFile = join(process.env.DATA_DIR || "/data", "taskspark.sqlite");
+  const dataDir = process.env.DATA_DIR || "/data";
+  const dataFile = join(dataDir, "taskspark.sqlite");
   const port = Number(process.env.PORT || 7370);
-  const app = createApp({ dataFile });
+  let app;
+  try {
+    app = createApp({ dataFile });
+  } catch {
+    process.exit(1);
+  }
   app.listen(port, "0.0.0.0").then(() => {
-    console.log(`Taskspark listening on ${port}`);
+    log("info", `listening port=${port} version=${VERSION}`);
   });
 }

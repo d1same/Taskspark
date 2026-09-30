@@ -34,6 +34,13 @@ jobs:
         id: sha
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Version
+        id: version
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+          echo "semver=$version" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -43,10 +50,12 @@ jobs:
           provenance: false
           tags: |
             ghcr.io/d1same/taskspark:latest
+            ghcr.io/d1same/taskspark:${{ steps.version.outputs.semver }}
             ghcr.io/d1same/taskspark:${{ steps.sha.outputs.short }}
           labels: |
             org.opencontainers.image.source=https://github.com/d1same/Taskspark
             org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ steps.version.outputs.semver }}
 
       - name: Check the image is public
         run: |

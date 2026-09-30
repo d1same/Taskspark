@@ -5,7 +5,7 @@ ENV NODE_ENV=production
 ENV PORT=7370
 ENV DATA_DIR=/data
 
-COPY package.json domain.mjs db.mjs server.mjs ./
+COPY package.json domain.mjs db.mjs server.mjs VERSION ./
 COPY public ./public
 
 RUN mkdir -p /data \

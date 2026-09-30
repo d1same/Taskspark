@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/d1same/Taskspark</Support>
   <Project>https://github.com/d1same/Taskspark</Project>
-  <Overview>Family chore board and points board. The first phone sets a household code. Later phones wait until an approved phone accepts them. Runs as user 1000. The appdata folder must be writable by that user.</Overview>
+  <Overview>Family chore board and points board. The first phone sets a household code. Later phones wait until an approved phone accepts them. Runs as user 1000. The appdata folder must be writable by that user. To roll back, set the repository tag to an older version, for example ghcr.io/d1same/taskspark:0.1.0, instead of latest. Logs are in the container log.</Overview>
   <Category>HomeAutomation: Tools:</Category>
   <WebUI>http://[IP]:[PORT:7370]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/d1same/Taskspark/main/unraid/taskspark.xml</TemplateURL>

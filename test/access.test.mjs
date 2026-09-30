@@ -266,3 +266,53 @@ test("weight changes the awarded points, and a reset keeps the closed winner wit
     app.close();
   }
 });
+
+test("logs skip the household code and record unlock failures", async () => {
+  const lines = [];
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (chunk, encoding, callback) => {
+    lines.push(String(chunk));
+    return write(chunk, encoding, callback);
+  };
+  const dir = mkdtempSync(join(tmpdir(), "taskspark-"));
+  const secret = "pond-light";
+  const app = createApp({
+    dataFile: join(dir, "taskspark.sqlite"),
+    attemptLimit: 1,
+    attemptWindowMs: 60_000,
+  });
+  const { url } = await app.listen();
+  try {
+    const setup = await api(url, "/api/setup", {
+      method: "POST",
+      body: { code: secret, confirm: secret },
+    });
+    const owner = tokenFrom(setup.res);
+    const pending = await api(url, "/api/unlock", { method: "POST", body: { code: secret } });
+    const guest = tokenFrom(pending.res);
+    const devices = await api(url, "/api/devices", { token: owner });
+    const guestId = devices.json.devices.find((device) => device.status !== "approved").id;
+    const approved = await api(url, `/api/devices/${guestId}/approve`, { method: "POST", token: owner, body: {} });
+    assert.equal(approved.res.status, 200);
+    const revoked = await api(url, `/api/devices/${guestId}/revoke`, { method: "POST", token: owner, body: {} });
+    assert.equal(revoked.res.status, 200);
+    const wrong = await api(url, `/api/unlock?code=${secret}`, { method: "POST", body: { code: "nope-nope" } });
+    assert.equal(wrong.res.status, 401);
+    const limited = await api(url, "/api/unlock", { method: "POST", body: { code: secret } });
+    assert.equal(limited.res.status, 401);
+    const text = lines.join("");
+    assert.equal(text.includes(secret), false);
+    assert.equal(text.includes("nope-nope"), false);
+    assert.equal(text.includes("?code="), false);
+    assert.match(text, /error unlock failed/);
+    assert.match(text, /error unlock rate-limited/);
+    assert.match(text, /info POST \/api\/unlock 401/);
+    assert.match(text, /info device approve/);
+    assert.match(text, /info device revoke/);
+    assert.equal(text.includes(guest), false);
+    assert.equal(text.includes(owner), false);
+  } finally {
+    process.stdout.write = write;
+    app.close();
+  }
+});
