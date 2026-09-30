@@ -48,19 +48,37 @@ jobs:
             org.opencontainers.image.source=https://github.com/d1same/Taskspark
             org.opencontainers.image.licenses=MIT
 
-      - name: Make the package public
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check the image is public
         run: |
           set -eu
-          for attempt in 1 2 3 4 5 6; do
-            if gh api --method PATCH \
-              -H "Accept: application/vnd.github+json" \
-              /users/d1same/packages/container/taskspark \
-              -f visibility=public >/tmp/taskspark-visibility.json; then
-              exit 0
-            fi
-            sleep 10
-          done
-          cat /tmp/taskspark-visibility.json
-          exit 1
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error, sys
+
+          def fetch(url, headers=None):
+              req = urllib.request.Request(url, headers=headers or {})
+              try:
+                  with urllib.request.urlopen(req) as res:
+                      return res.status, res.read()
+              except urllib.error.HTTPError as err:
+                  return err.code, err.read()
+
+          status, body = fetch("https://ghcr.io/token?service=ghcr.io&scope=repository:d1same/taskspark:pull")
+          token = json.loads(body).get("token") if status == 200 else ""
+          if not token:
+              sys.exit("anonymous pull was refused")
+          accept = "application/vnd.oci.image.index.v1+json"
+          status, body = fetch(
+              "https://ghcr.io/v2/d1same/taskspark/manifests/latest",
+              {"Authorization": "Bearer " + token, "Accept": accept},
+          )
+          if status != 200:
+              sys.exit(f"anonymous pull failed with HTTP {status}")
+          platforms = set()
+          for item in json.loads(body).get("manifests", []):
+              plat = item.get("platform") or {}
+              platforms.add(f"{plat.get('os')}/{plat.get('architecture')}")
+          needed = {"linux/amd64", "linux/arm64"}
+          if not needed <= platforms:
+              sys.exit("image is missing linux/amd64 or linux/arm64")
+          print("public image has linux/amd64 and linux/arm64")
+          PY
