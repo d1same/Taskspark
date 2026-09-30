@@ -1,8 +1,6 @@
 services:
   taskspark:
     image: ghcr.io/d1same/taskspark:latest
-    # To build this folder instead of pulling, uncomment the next line.
-    # build: .
     ports:
       - "8080:8080"
     environment:

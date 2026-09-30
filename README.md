@@ -8,6 +8,8 @@ There is no household code in the image. The first phone chooses it.
 
 ## Run with Docker
 
+A push to `main` makes GitHub build `ghcr.io/d1same/taskspark` for `linux/amd64` and `linux/arm64`. You pull that image.
+
 You put the board on the kitchen computer. Chores stay in the data folder, so a reboot does not wipe the house.
 
 ```bash
@@ -28,7 +30,7 @@ From this folder:
 docker compose up -d
 ```
 
-Compose pulls `ghcr.io/d1same/taskspark:latest`. To build from this folder instead, see the comment in `docker-compose.yml`.
+Compose pulls `ghcr.io/d1same/taskspark:latest`. GitHub built that tag.
 
 ## Unraid
 
@@ -50,7 +52,7 @@ The appdata folder must be writable by user id 1000.
 
 ## Home Assistant
 
-This folder is a local add-on. `config.yaml` pulls `ghcr.io/d1same/taskspark:latest`. The Dockerfile beside it is that same image when the store builds locally.
+This folder is a local add-on. `config.yaml` pulls `ghcr.io/d1same/taskspark:latest`, the image GitHub built.
 
 1. Copy this folder to `/addons/taskspark` on the Home Assistant host.
 2. Open Settings, Add-ons, Add-on store. Reload the store.
