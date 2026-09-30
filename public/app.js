@@ -1,4 +1,4 @@
-import { avatar, colorClass, esc, icon, PALETTE } from "./icons.js";
+import { avatar, colorClass, esc, houseMark, icon, PALETTE } from "./icons.js";
 
 const ui = {
   view: "board",
@@ -228,7 +228,7 @@ function spotlight() {
       ? `<button data-view="calendar">${icon("calendar")} Earlier tasks are on the calendar</button>`
       : "";
     return `<section class="spotlight is-empty">
-      <div class="empty-mark" aria-hidden="true">${icon("points")}</div>
+      ${houseMark()}
       <p class="kicker">Now</p>
       <h2>Nothing to do right now</h2>
       <p class="quiet">The next task shows up here.</p>
@@ -240,11 +240,14 @@ function spotlight() {
   const repeat = repeatLabel(hero);
   return `<section class="spotlight" data-id="${esc(hero.id)}">
     <div class="spotlight-top">
-      <p class="kicker">Now</p>
-      ${pointsPill(hero.score)}
+      <div>
+        <p class="kicker">Now</p>
+        ${pointsPill(hero.score)}
+      </div>
+      ${who ? avatar(who.name, who.color, "lg") : houseMark()}
     </div>
     <h2>${esc(hero.title)}</h2>
-    <p class="meta">${who ? avatar(who.name, who.color) : ""}<span>${esc(personLabel(hero.assigneeId))}${repeat ? ` · ${esc(repeat)}` : ""}</span></p>
+    <p class="meta"><span>${esc(personLabel(hero.assigneeId))}${repeat ? ` · ${esc(repeat)}` : ""}</span></p>
     <button class="complete" data-complete="${esc(hero.id)}">${icon("complete")} Complete</button>
     <div class="move-row">
       <span class="quiet">Move</span>
@@ -450,11 +453,12 @@ function emptyPodium() {
 
 function rankRow(row, place) {
   const member = memberById(row.memberId);
+  const medal = place <= 3 ? ` rank-${place}` : "";
   return `<li class="rank-row">
-    <span class="rank-num">${place}</span>
+    <span class="rank-num${medal}">${place}</span>
     ${member ? avatar(member.name, member.color) : ""}
     <span class="rank-name">${esc(row.name)}</span>
-    <span class="rank-points">${row.points}</span>
+    <span class="rank-points">${icon("points")} ${row.points}</span>
   </li>`;
 }
 
@@ -552,10 +556,24 @@ async function loadDevices() {
   const host = document.getElementById("devices");
   if (!host || !data?.devices) return;
   host.innerHTML = data.devices.map((device) => {
+    const title = device.label || device.kind;
+    const identity = device.kind && device.kind !== title ? device.kind : "";
+    const status = device.status === "approved" ? "Approved" : device.status === "pending" ? "Waiting" : "Revoked";
     const action = device.status === "approved"
       ? `<button data-device="revoke" data-id="${esc(device.id)}">Revoke</button>`
       : `<button class="primary" data-device="approve" data-id="${esc(device.id)}">Approve</button>`;
-    return `<article class="task"><div class="task-body"><h3>${esc(device.label)}</h3><p class="quiet">${esc(device.status)}</p>${action}</div></article>`;
+    return `<article class="device-card" data-device-card="${esc(device.id)}">
+      <div class="device-top">
+        <span class="device-mark" aria-hidden="true">${icon("phone")}</span>
+        <div>
+          <h3>${esc(title)}</h3>
+          <p class="quiet">${esc([identity, status].filter(Boolean).join(" · "))}</p>
+        </div>
+      </div>
+      <label>Name<input data-device-name value="${esc(device.name || "")}" maxlength="40" placeholder="Kitchen iPad" autocomplete="off"></label>
+      <button data-device="rename" data-id="${esc(device.id)}">Save name</button>
+      ${action}
+    </article>`;
   }).join("") || `<p class="quiet">No devices.</p>`;
 }
 
@@ -566,7 +584,7 @@ function applyTheme(theme) {
   const scheme = document.querySelector('meta[name="color-scheme"]');
   if (scheme) scheme.content = next;
   const color = document.querySelector('meta[name="theme-color"]');
-  if (color) color.content = next === "dark" ? "#141311" : "#f6f3ec";
+  if (color) color.content = next === "dark" ? "#101820" : "#e7f3fb";
   try {
     localStorage.setItem("taskspark-theme", next);
   } catch {
@@ -822,6 +840,13 @@ document.addEventListener("click", async (event) => {
     await send(`api/members/${target.dataset.removeMember}`, "DELETE", {});
     ui.confirm = null;
     render();
+    return;
+  }
+  if (target.dataset.device === "rename") {
+    const card = target.closest("[data-device-card]");
+    const name = card?.querySelector("[data-device-name]")?.value || "";
+    await send(`api/devices/${target.dataset.id}/name`, "POST", { name });
+    await loadDevices();
     return;
   }
   if (target.dataset.device) {

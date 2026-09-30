@@ -243,7 +243,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
         send(res, 401, PHASE.locked);
         return;
       }
-      const device = db.setup(code, clock);
+      const device = db.setup(code, clock, req.headers["user-agent"]);
       if (!device) {
         log("error", "setup failed");
         send(res, 401, PHASE.locked);
@@ -276,7 +276,7 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
         send(res, 200, PHASE.waiting, { "Set-Cookie": cookieHeader(cookieToken(req), req) });
         return;
       }
-      const device = db.unlock(code, clock);
+      const device = db.unlock(code, clock, req.headers["user-agent"]);
       if (!device) {
         fail(ip);
         log("error", "unlock failed");
@@ -293,12 +293,23 @@ export function createApp({ dataFile, attemptLimit = 20, attemptWindowMs = 15 * 
       return;
     }
 
-    const deviceRoute = path.match(/^\/api\/devices\/([0-9a-f-]{36})\/(approve|revoke)$/);
+    const deviceRoute = path.match(/^\/api\/devices\/([0-9a-f-]{36})\/(approve|revoke|name)$/);
     if (req.method === "POST" && deviceRoute) {
-      await readJson(req, []);
       const actor = requireBoard(req);
       const target = deviceRoute[1];
       const action = deviceRoute[2];
+      if (action === "name") {
+        const body = await readJson(req, ["name"]);
+        const name = text(body.name, 40);
+        if (!name || !db.renameDevice(target, name)) {
+          log("error", "device rename failed");
+          throw bad();
+        }
+        log("info", "device rename");
+        send(res, 200, { devices: db.listDevices() });
+        return;
+      }
+      await readJson(req, []);
       if (action === "revoke" && target === actor.id) {
         log("error", "device revoke failed");
         throw bad();

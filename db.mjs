@@ -11,6 +11,7 @@ import {
   moveTask,
   nextDue,
   periodBounds,
+  deviceKind,
   projectBoard,
   startOfLocalDay,
   resultingPoints,
@@ -32,6 +33,8 @@ CREATE TABLE IF NOT EXISTS devices (
   token_hash TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL,
   label TEXT NOT NULL,
+  kind TEXT,
+  name TEXT,
   created_at TEXT NOT NULL,
   approved_at TEXT
 );
@@ -90,6 +93,13 @@ export function openDatabase(file) {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 5000");
   db.exec(SCHEMA);
+  const deviceColumns = db.prepare("PRAGMA table_info(devices)").all();
+  if (!deviceColumns.some((column) => column.name === "kind")) {
+    db.exec("ALTER TABLE devices ADD COLUMN kind TEXT");
+  }
+  if (!deviceColumns.some((column) => column.name === "name")) {
+    db.exec("ALTER TABLE devices ADD COLUMN name TEXT");
+  }
   const existing = db.prepare("SELECT id FROM settings WHERE id = 1").get();
   if (!existing) {
     db.prepare(
@@ -178,15 +188,30 @@ export function openDatabase(file) {
     db.prepare("UPDATE settings SET cutoff = ? WHERE id = 1").run(closed.cutoff);
   }
 
-  function createDevice(status, nowIso) {
-    const count = db.prepare("SELECT count(*) AS n FROM devices").get().n + 1;
+  function presentDevice(row) {
+    const stored = row.kind || "";
+    const kind = stored || (/^Device \d+$/.test(row.label || "") ? "Earlier phone" : row.label || "Unknown browser");
+    const name = row.name || null;
+    return {
+      id: row.id,
+      status: row.status,
+      name,
+      kind,
+      label: name || kind,
+      createdAt: row.createdAt,
+      approvedAt: row.approvedAt,
+    };
+  }
+
+  function createDevice(status, nowIso, userAgent) {
+    const kind = deviceKind(userAgent);
     const id = randomUUID();
     const token = randomBytes(32).toString("base64url");
     db.prepare(
-      `INSERT INTO devices (id, token_hash, status, label, created_at, approved_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, hashToken(token), status, `Device ${count}`, nowIso, status === "approved" ? nowIso : null);
-    return { id, token, status, label: `Device ${count}` };
+      `INSERT INTO devices (id, token_hash, status, label, kind, name, created_at, approved_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
+    ).run(id, hashToken(token), status, kind, kind, nowIso, status === "approved" ? nowIso : null);
+    return { id, token, status, label: kind, kind, name: null };
   }
 
   return {
@@ -205,7 +230,7 @@ export function openDatabase(file) {
       if (got.length !== want.length) return false;
       return timingSafeEqual(got, want);
     },
-    setup(code, now) {
+    setup(code, now, userAgent) {
       return tx(() => {
         const row = settings();
         if (row.code_hash) return null;
@@ -214,12 +239,12 @@ export function openDatabase(file) {
           salt.toString("hex"),
           hashCode(code, salt),
         );
-        return createDevice("approved", now.toISOString());
+        return createDevice("approved", now.toISOString(), userAgent);
       });
     },
-    unlock(code, now) {
+    unlock(code, now, userAgent) {
       if (!this.checkCode(code)) return null;
-      return tx(() => createDevice("pending", now.toISOString()));
+      return tx(() => createDevice("pending", now.toISOString(), userAgent));
     },
     deviceByToken(token) {
       if (!token) return null;
@@ -235,10 +260,19 @@ export function openDatabase(file) {
     listDevices() {
       return db
         .prepare(
-          `SELECT id, status, label, created_at AS createdAt, approved_at AS approvedAt
+          `SELECT id, status, label, kind, name, created_at AS createdAt, approved_at AS approvedAt
            FROM devices ORDER BY created_at, id`,
         )
-        .all();
+        .all()
+        .map(presentDevice);
+    },
+    renameDevice(id, name) {
+      return tx(() => {
+        const row = db.prepare("SELECT id FROM devices WHERE id = ?").get(id);
+        if (!row) return false;
+        db.prepare("UPDATE devices SET name = ? WHERE id = ?").run(name, id);
+        return true;
+      });
     },
     setDeviceStatus(id, status, now) {
       return tx(() => {

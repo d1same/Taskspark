@@ -24,6 +24,7 @@ const PATHS = {
   moon: '<path d="M15.4 3.8A7.1 7.1 0 1 0 20.2 16 6.2 6.2 0 0 1 15.4 3.8Z"/>',
   gear: '<path d="M14.7 6.4a3.1 3.1 0 0 0-4.2 4L5 16.1a1.5 1.5 0 0 0 2.1 2.1l5.7-5.6a3.1 3.1 0 0 0 4-4.2l-1.9 1.9-2.2-2.2Z"/>',
   grip: '<circle cx="9" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="17" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="1.15" fill="currentColor" stroke="none"/>',
+  phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17.2h2"/>',
 };
 
 export function icon(name) {
@@ -38,7 +39,65 @@ export function colorClass(color) {
   return `c${index < 0 ? 0 : index}`;
 }
 
-export function avatar(name, color) {
-  const letter = esc(String(name || "?").trim().slice(0, 1).toUpperCase() || "?");
-  return `<span class="avatar ${colorClass(color)}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.25" y="1.25" width="21.5" height="21.5" rx="7" fill="currentColor"/></svg><span class="avatar-letter">${letter}</span></span>`;
+const FACES = [
+  { bg: "#f8e4d8", skin: "#f3c7a8", hair: "#3b2a24", shirt: "#c56a4a", lip: "#c47b6a", style: "short" },
+  { bg: "#f8edd4", skin: "#e8b98a", hair: "#6a3e22", shirt: "#d4a054", lip: "#c4846a", style: "bun" },
+  { bg: "#e3f0e6", skin: "#f6d3bc", hair: "#2f3b34", shirt: "#6f8f78", lip: "#d08978", style: "wave" },
+  { bg: "#dcecf1", skin: "#c68658", hair: "#1e2428", shirt: "#4e7c8a", lip: "#a86b52", style: "crop" },
+  { bg: "#f8e4ec", skin: "#f4cbb4", hair: "#4a2c3a", shirt: "#a15d78", lip: "#c46b78", style: "bob" },
+  { bg: "#f8eadc", skin: "#d4956a", hair: "#2a2118", shirt: "#c4844a", lip: "#b56a48", style: "curls" },
+  { bg: "#eee6f2", skin: "#f6d7c4", hair: "#3a3150", shirt: "#7a6a8a", lip: "#c98998", style: "long" },
+  { bg: "#e3f0ea", skin: "#8d552f", hair: "#1c1612", shirt: "#3f6f62", lip: "#6e3e2c", style: "fringe" },
+];
+
+function hair(style, color) {
+  if (style === "bun") {
+    return `<circle cx="32" cy="12" r="6" fill="${color}"/><path d="M18 30c1-12 8-16 14-16s13 4 14 16c-3-6-8-8-14-8s-11 2-14 8z" fill="${color}"/>`;
+  }
+  if (style === "wave") {
+    return `<path d="M16 32c0-14 6-20 16-20 8 0 14 4 16 14-4-8-10-10-16-8-6 1-12 4-16 14z" fill="${color}"/>`;
+  }
+  if (style === "crop") {
+    return `<path d="M20 28c0-9 5-14 12-14s12 5 12 14c-2-5-6-7-12-7s-10 2-12 7z" fill="${color}"/>`;
+  }
+  if (style === "bob") {
+    return `<path d="M15 36c0-16 6-22 17-22s17 6 17 22c-1-2-4 2-7-2-2 8-6 10-10 10s-8-2-10-10c-3 4-6 0-7 2z" fill="${color}"/>`;
+  }
+  if (style === "curls") {
+    return `<circle cx="20" cy="22" r="6" fill="${color}"/><circle cx="32" cy="16" r="7" fill="${color}"/><circle cx="44" cy="22" r="6" fill="${color}"/><path d="M18 30c2-8 8-10 14-10s12 2 14 10c-4-4-8-5-14-5s-10 1-14 5z" fill="${color}"/>`;
+  }
+  if (style === "long") {
+    return `<path d="M18 26c0-12 6-16 14-16s14 4 14 16v16c-2-8-6-10-14-10s-12 2-14 10z" fill="${color}"/>`;
+  }
+  if (style === "fringe") {
+    return `<path d="M18 32c0-14 5-18 14-18s14 4 14 18H18z" fill="${color}"/><rect x="20" y="24" width="24" height="5" rx="2" fill="${color}"/>`;
+  }
+  return `<path d="M18 30c0-12 5-18 14-18s14 6 14 18c-3-7-8-9-14-9s-11 2-14 9z" fill="${color}"/>`;
+}
+
+function portrait(index) {
+  const face = FACES[index] || FACES[0];
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">
+    <circle cx="32" cy="32" r="32" fill="${face.bg}"/>
+    <path d="M6 66c10-20 42-20 52 0" fill="${face.shirt}"/>
+    <circle cx="32" cy="32" r="14" fill="${face.skin}"/>
+    ${hair(face.style, face.hair)}
+    <circle cx="27" cy="32" r="1.7" fill="#2a241f"/>
+    <circle cx="37.5" cy="32" r="1.7" fill="#2a241f"/>
+    <circle cx="27.6" cy="31.4" r="0.55" fill="#fff"/>
+    <circle cx="38.1" cy="31.4" r="0.55" fill="#fff"/>
+    <circle cx="24" cy="36" r="2" fill="${face.lip}" opacity="0.35"/>
+    <circle cx="40" cy="36" r="2" fill="${face.lip}" opacity="0.35"/>
+    <path d="M28 37.5c1.3 1.8 6.7 1.8 8 0" fill="none" stroke="${face.lip}" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>`;
+}
+
+export function avatar(name, color, size) {
+  const index = Math.max(0, PALETTE.indexOf(String(color || "").toLowerCase()));
+  const large = size === "lg" ? " avatar-lg" : "";
+  return `<span class="avatar${large} ${colorClass(color)}" aria-hidden="true">${portrait(index)}</span>`;
+}
+
+export function houseMark() {
+  return `<span class="empty-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="#d7f3ea"/><path d="M8 32 32 14l24 18v22H8Z" fill="#1f8a70"/><rect x="27" y="38" width="10" height="16" rx="1" fill="#fff7ea"/></svg></span>`;
 }

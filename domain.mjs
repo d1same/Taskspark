@@ -131,6 +131,29 @@ export function resultingPoints(points) {
   return points;
 }
 
+export function deviceKind(userAgent) {
+  const ua = String(userAgent || "").replace(/[\u0000-\u001f]/g, " ").slice(0, 400);
+  if (!ua.trim()) return "Unknown browser";
+  let hardware = "Computer";
+  if (/iPhone/i.test(ua)) hardware = "iPhone";
+  else if (/iPad/i.test(ua)) hardware = "iPad";
+  else if (/Android/i.test(ua)) hardware = /Mobile/i.test(ua) ? "Android phone" : "Android";
+  else if (/Windows/i.test(ua)) hardware = "Windows";
+  else if (/Mac OS X|Macintosh/i.test(ua)) hardware = "Mac";
+  else if (/CrOS/i.test(ua)) hardware = "Chromebook";
+  else if (/Linux/i.test(ua)) hardware = "Linux";
+  let browser = "browser";
+  if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  else if (/SamsungBrowser/i.test(ua)) browser = "Samsung Internet";
+  else if (/CriOS/i.test(ua)) browser = "Chrome";
+  else if (/FxiOS/i.test(ua)) browser = "Firefox";
+  else if (/Firefox\//i.test(ua)) browser = "Firefox";
+  else if (/Chrome\//i.test(ua)) browser = "Chrome";
+  else if (/Version\/[\d.]+.*Safari\//i.test(ua)) browser = "Safari";
+  return `${hardware} · ${browser}`;
+}
+
 export function bucketFor(due, today, tomorrow) {
   if (!due) return "later";
   if (due === today) return "today";

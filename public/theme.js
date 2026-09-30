@@ -8,5 +8,5 @@
   var scheme = document.querySelector('meta[name="color-scheme"]');
   if (scheme) scheme.content = theme;
   var color = document.querySelector('meta[name="theme-color"]');
-  if (color) color.content = theme === "dark" ? "#141311" : "#f6f3ec";
+  if (color) color.content = theme === "dark" ? "#101820" : "#e7f3fb";
 })();

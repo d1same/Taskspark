@@ -11,6 +11,7 @@ import {
   nextDue,
   periodBounds,
   projectBoard,
+  deviceKind,
   resultingPoints,
   summarize,
 } from "../domain.mjs";
@@ -154,6 +155,27 @@ test("a tie or a zero week has no winner, and undo drops the points", () => {
   assert.equal(undone.week[0].points, 0);
   assert.equal(undone.allTime[0].points, 0);
   assert.equal(undone.lastWeek, null);
+});
+
+test("a phone or browser becomes a readable device kind", () => {
+  assert.equal(
+    deviceKind("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"),
+    "iPhone · Safari",
+  );
+  assert.equal(
+    deviceKind("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1"),
+    "iPhone · Chrome",
+  );
+  assert.equal(
+    deviceKind("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"),
+    "Android phone · Chrome",
+  );
+  assert.equal(
+    deviceKind("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"),
+    "Windows · Edge",
+  );
+  assert.equal(deviceKind(""), "Unknown browser");
+  assert.equal(deviceKind("Mozilla/5.0").includes("token"), false);
 });
 
 test("a task is worth its points, with no size multiplier", () => {

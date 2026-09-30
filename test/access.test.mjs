@@ -18,13 +18,14 @@ function tokenFrom(res) {
   return decodeURIComponent(match[1]);
 }
 
-async function api(url, path, { method = "GET", token, body, proto } = {}) {
+async function api(url, path, { method = "GET", token, body, proto, ua } = {}) {
   const res = await fetch(url + path, {
     method,
     headers: {
       ...(body !== undefined || method !== "GET" ? headers : {}),
       ...(token ? { cookie: `taskspark=${token}` } : {}),
       ...(proto ? { "x-forwarded-proto": proto } : {}),
+      ...(ua ? { "user-agent": ua } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -322,6 +323,61 @@ test("logs skip the household code and record unlock failures", async () => {
     assert.match(text, /info device revoke/);
     assert.equal(text.includes(guest), false);
     assert.equal(text.includes(owner), false);
+  } finally {
+    process.stdout.write = write;
+    app.close();
+  }
+});
+
+test("a joined phone shows its browser, and an approved phone can name it", async () => {
+  const lines = [];
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (chunk, encoding, callback) => {
+    lines.push(String(chunk));
+    return write(chunk, encoding, callback);
+  };
+  const dir = mkdtempSync(join(tmpdir(), "taskspark-"));
+  const app = createApp({ dataFile: join(dir, "board.sqlite") });
+  const { url } = await app.listen();
+  const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  try {
+    const setup = await api(url, "/api/setup", {
+      method: "POST",
+      ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+      body: { code: "meadow-path", confirm: "meadow-path" },
+    });
+    const owner = tokenFrom(setup.res);
+    const pending = await api(url, "/api/unlock", {
+      method: "POST",
+      ua: iphone,
+      body: { code: "meadow-path" },
+    });
+    const guest = tokenFrom(pending.res);
+    const devices = await api(url, "/api/devices", { token: owner });
+    const phone = devices.json.devices.find((device) => device.status === "pending");
+    assert.equal(phone.kind, "iPhone · Safari");
+    assert.equal(phone.label, "iPhone · Safari");
+    assert.equal(phone.name, null);
+    assert.equal(JSON.stringify(devices.json).includes("Mozilla"), false);
+    assert.equal(JSON.stringify(devices.json).includes(guest), false);
+    const named = await api(url, `/api/devices/${phone.id}/name`, {
+      method: "POST",
+      token: owner,
+      body: { name: "Moe's phone" },
+    });
+    const saved = named.json.devices.find((device) => device.id === phone.id);
+    assert.equal(named.res.status, 200);
+    assert.equal(saved.name, "Moe's phone");
+    assert.equal(saved.label, "Moe's phone");
+    assert.equal(saved.kind, "iPhone · Safari");
+    const mac = named.json.devices.find((device) => device.status === "approved");
+    assert.equal(mac.kind, "Mac · Safari");
+    const text = lines.join("");
+    assert.equal(text.includes("meadow-path"), false);
+    assert.equal(text.includes(owner), false);
+    assert.equal(text.includes(guest), false);
+    assert.equal(text.includes(iphone), false);
+    assert.match(text, /info device rename/);
   } finally {
     process.stdout.write = write;
     app.close();
