@@ -295,15 +295,15 @@ function taskCard(task, allowDrag) {
   const who = memberById(task.assigneeId);
   const repeat = repeatLabel(task);
   const stripe = tone(who?.color);
-  const whoPill = who
-    ? `<span class="pill ${tone(who.color)}">${dot(who.color)}${esc(who.name)}</span>`
-    : `<span class="pill tone-any">${icon("home")} Anyone</span>`;
+  const whoName = who
+    ? `<span class="who-name">${esc(who.name)}</span>`
+    : `<span class="who-name">Anyone</span>`;
   const owned = Boolean(task.assigneeId);
   const check = task.resting
     ? `<span class="check is-done" aria-hidden="true">${icon("complete")}</span>`
     : owned
-      ? `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}">${icon("complete")}</button>`
-      : `<button class="check claim-mark" data-claim-chore="${esc(task.id)}">Claim</button>`;
+      ? `<button class="check" data-complete="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"></button>`
+      : `<button class="claim-word" data-claim-chore="${esc(task.id)}">Claim</button>`;
   const edit = allowDrag ? `<button class="mini" data-edit="${esc(task.id)}">Edit</button>` : "";
   return `<article class="task ${stripe}${task.resting ? " is-done" : ""}" data-id="${esc(task.id)}">
     <div class="task-row">
@@ -311,9 +311,9 @@ function taskCard(task, allowDrag) {
       ${check}
       <div class="task-copy">
         <h3>${esc(task.title)}</h3>
-        ${whoPill}${repeat ? `<span class="quiet">${esc(repeat)}</span>` : ""}
+        ${whoName}${repeat ? `<span class="quiet">${esc(repeat)}</span>` : ""}
       </div>
-      ${badge(task.score)}
+      <span class="pts">+${task.score}</span>
       ${edit}
     </div>
     ${ui.editing === task.id ? editForm(task) : ""}
@@ -406,8 +406,9 @@ function weekGoal() {
 
 function fridgeNote() {
   const total = weekTotal();
-  const goal = nextMark(total);
-  return `<aside class="note">${icon("pin")}<p><strong>Fridge note:</strong> This week is ${total} of ${goal} points.</p></aside>`;
+  if (!total) return "";
+  const label = total === 1 ? "point" : "points";
+  return `<aside class="note">${icon("pin")}<p>The family has ${total} ${label} this week.</p></aside>`;
 }
 
 function memberChips() {
@@ -564,16 +565,19 @@ function leaderboard() {
   if (!periods.some(([key]) => key === ui.boardPeriod)) ui.boardPeriod = "week";
   const control = periods.map(([key, label]) => `<button data-score="${key}" aria-pressed="${ui.boardPeriod === key}">${label}</button>`).join("");
   const rows = ranked(board[ui.boardPeriod] || []);
-  const list = rows.length
-    ? rows.map((row, index) => rankCard(row, index + 1)).join("")
-    : `<p class="quiet">Add a person in Admin.</p>`;
-  const empty = rows.some((row) => row.points > 0) ? "" : `<p class="quiet">${{
+  const scored = rows.filter((row) => row.points > 0);
+  const emptyCopy = {
     week: "Nobody has points this week.",
     month: "Nobody has points this month.",
     year: "Nobody has points this year.",
     allTime: "Nobody has points yet.",
     period: "Nobody has points this period.",
-  }[ui.boardPeriod] || "Nobody has points yet."}</p>`;
+  }[ui.boardPeriod] || "Nobody has points yet.";
+  const list = !rows.length
+    ? `<p class="quiet">Add a person in Admin.</p>`
+    : scored.length
+      ? scored.map((row, index) => rankCard(row, index + 1)).join("")
+      : `<p class="quiet">${emptyCopy}</p>`;
   const reset = state.resetMode === "week"
     ? "Scores reset each week. The week starts Monday."
     : state.resetMode === "month"
@@ -592,7 +596,6 @@ function leaderboard() {
     ${winnerCard("Last week's winner", board.lastWeek)}
     ${winnerCard("Last month's winner", board.lastMonth)}
     <div class="section-head"><h2>Family standings</h2></div>
-    ${empty}
     ${list}
   </div>`;
 }
